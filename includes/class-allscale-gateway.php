@@ -9,7 +9,7 @@ class Allscale_Gateway extends WC_Payment_Gateway {
     public function __construct() {
         $this->id                 = 'allscale_checkout';
         $this->method_title       = 'Allscale Checkout';
-        $this->method_description = 'Accept crypto payments via Allscale. Customers pay in fiat, you receive USDT.';
+        $this->method_description = 'Accept crypto payments via Allscale. Prices in local currency, settled as USDT.';
         $this->has_fields         = false;
 
         $this->init_form_fields();

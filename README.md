@@ -1,6 +1,6 @@
 # Allscale Checkout for WooCommerce
 
-A WordPress/WooCommerce payment gateway plugin that lets merchants accept crypto payments via [Allscale Checkout](https://allscale.io). Customers pay in fiat-denominated amounts, and funds settle instantly as **USDT stablecoin** directly to the merchant's wallet.
+A WordPress/WooCommerce payment gateway plugin that lets merchants accept crypto payments via [Allscale Checkout](https://allscale.io). Prices are displayed in your store's local currency, and funds settle instantly as **USDT stablecoin** directly to the merchant's wallet.
 
 ## Why Allscale?
 
@@ -9,7 +9,6 @@ A WordPress/WooCommerce payment gateway plugin that lets merchants accept crypto
 - **Instant settlement** — On-chain USDT, no waiting days for payouts.
 - **No account freezes** — Your funds are on-chain and always accessible.
 - **Permissionless setup** — Self-custodial, so you can start accepting payments right away.
-- **163 fiat currencies supported** — USD, EUR, GBP, JPY, and many more.
 
 ## How It Works
 
