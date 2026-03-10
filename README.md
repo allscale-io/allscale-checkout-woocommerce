@@ -48,25 +48,40 @@ cd wp-content/plugins/
 git clone https://github.com/shawnpang/allscale-checkout-woocommerce.git allscale-checkout
 ```
 
-## Configuration
+## Setup Guide
 
-1. Go to **WooCommerce → Settings → Payments → Allscale Checkout**.
-2. Enable the payment method.
-3. Enter your **API Key** and **API Secret** (obtained from the Allscale dashboard).
-4. Select your **environment** (Sandbox for testing, Production for live).
-5. Set your **Webhook URL** in the Allscale dashboard to:
-   ```
-   https://yoursite.com/wc-api/allscale_checkout
-   ```
-6. Save changes and you're ready to accept payments.
-
-## Allscale Setup
+### Step 1: Get your Allscale API credentials
 
 1. Create an account at [allscale.io](https://allscale.io).
 2. Enable **Allscale Commerce** in your dashboard.
 3. Create a **Store** and configure your USDT receiving wallet address.
 4. Generate an **API Key** and **API Secret** (the secret is shown only once — save it).
-5. Set your webhook URL to point to your WordPress site (see Configuration above).
+
+### Step 2: Enable the payment gateway in WooCommerce
+
+1. In your WordPress admin, go to **WooCommerce → Settings** in the left sidebar.
+2. Click the **Payments** tab.
+3. Find **Allscale Checkout** in the list of payment providers and click **Enable**, then **Manage**.
+
+> **Tip:** You can also get there from **Plugins → Installed Plugins** and clicking the **Settings** link under Allscale Checkout.
+
+![Allscale Checkout in WooCommerce Payments settings](assets/woocommerce-payments-setup.png)
+
+### Step 3: Configure the plugin
+
+1. Enter your **API Key** and **API Secret** from Step 1.
+2. Select your **Environment** (Sandbox for testing, Production for live payments).
+3. Click **Save changes**.
+
+### Step 4: Set up the webhook
+
+1. Copy the **Webhook URL** shown at the bottom of the plugin settings page. It looks like:
+   ```
+   https://yoursite.com/wc-api/allscale_checkout
+   ```
+2. In your Allscale dashboard, paste this URL as your store's webhook endpoint.
+
+That's it — your store is now accepting crypto payments.
 
 ## Development
 

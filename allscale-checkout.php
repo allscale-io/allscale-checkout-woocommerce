@@ -26,6 +26,13 @@ add_action('before_woocommerce_init', function () {
     }
 });
 
+// Add Settings link on the Plugins page
+add_filter('plugin_action_links_' . plugin_basename(__FILE__), function ($links) {
+    $settings_url = admin_url('admin.php?page=wc-settings&tab=checkout&section=allscale_checkout');
+    array_unshift($links, '<a href="' . esc_url($settings_url) . '">Settings</a>');
+    return $links;
+});
+
 add_action('plugins_loaded', 'allscale_checkout_init');
 
 function allscale_checkout_init() {
