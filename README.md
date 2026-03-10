@@ -94,6 +94,25 @@ That's it — the plugin is now installed. Follow the [Setup Guide](#setup-guide
 
 That's it — your store is now accepting crypto payments.
 
+## Refunds
+
+Allscale is a **non-custodial** payment solution — funds settle directly to your wallet, not to a platform account. Because of this, automatic refunds via the WooCommerce order screen are not supported.
+
+To refund a customer:
+
+1. Send the refund amount back to the customer manually from your wallet.
+2. In WooCommerce, go to the order and update the status to **Refunded**.
+
+Your assets are always safe and under your control — no third party can freeze, hold, or reverse your funds.
+
+## Abandoned Orders and Stock
+
+If a customer starts checkout but never completes payment on Allscale, the order stays as "Pending payment." WooCommerce automatically cancels unpaid pending orders and restores stock based on your **Hold stock** setting:
+
+**WooCommerce → Settings → Products → Inventory → Hold stock (minutes)**
+
+The default is 60 minutes. After that time, unpaid orders are cancelled and any reserved stock is released. No action needed from you.
+
 ## Development
 
 ```bash

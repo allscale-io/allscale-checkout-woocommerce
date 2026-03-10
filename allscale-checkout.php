@@ -23,6 +23,7 @@ define('ALLSCALE_CHECKOUT_PATH', plugin_dir_path(__FILE__));
 add_action('before_woocommerce_init', function () {
     if (class_exists('\Automattic\WooCommerce\Utilities\FeaturesUtil')) {
         \Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility('custom_order_tables', __FILE__, true);
+        \Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility('cart_checkout_blocks', __FILE__, true);
     }
 });
 
@@ -32,6 +33,24 @@ add_filter('plugin_action_links_' . plugin_basename(__FILE__), function ($links)
     array_unshift($links, '<a href="' . esc_url($settings_url) . '">Settings</a>');
     return $links;
 });
+
+// Register block checkout integration
+add_action('woocommerce_blocks_loaded', 'allscale_checkout_blocks_init');
+
+function allscale_checkout_blocks_init() {
+    if (!class_exists('Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType')) {
+        return;
+    }
+
+    require_once ALLSCALE_CHECKOUT_PATH . 'includes/class-allscale-blocks.php';
+
+    add_action(
+        'woocommerce_blocks_payment_method_type_registration',
+        function ($registry) {
+            $registry->register(new Allscale_Blocks_Integration());
+        }
+    );
+}
 
 add_action('plugins_loaded', 'allscale_checkout_init');
 

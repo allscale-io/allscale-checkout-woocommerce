@@ -12,7 +12,9 @@ class Allscale_Gateway extends WC_Payment_Gateway {
         $this->method_description = '<strong>Community beta</strong> — developed by the AllScale community, not an official release. '
             . 'Your assets are always safe thanks to Allscale\'s non-custodial design (funds go directly to your wallet, never held by a third party). '
             . '0.5% fees, instant USDT settlement, no account freezes. '
-            . '<a href="https://allscale.io" target="_blank">Create a free Allscale account</a> to get started.';
+            . '<a href="https://allscale.io" target="_blank">Create a free Allscale account</a> to get started.'
+            . '<br><br><strong>Refunds:</strong> Allscale is non-custodial — funds settle directly to your wallet, so automatic refunds are not supported. '
+            . 'To refund a customer, send the amount back manually from your wallet and update the order status in WooCommerce.';
         $this->has_fields         = false;
         $this->icon               = plugins_url('assets/icon.png', dirname(__FILE__));
 
@@ -204,11 +206,9 @@ class Allscale_Gateway extends WC_Payment_Gateway {
         $order->update_meta_data('_allscale_checkout_url', $result['data']['checkout_url']);
         $order->save();
 
-        // Mark as pending payment
+        // Mark as pending payment — WooCommerce will auto-cancel and restore stock
+        // for unpaid orders based on the "Hold stock" setting (WooCommerce → Settings → Products → Inventory).
         $order->update_status('pending', 'Awaiting Allscale payment.');
-
-        // Reduce stock
-        wc_reduce_stock_levels($order_id);
 
         // Empty the cart
         WC()->cart->empty_cart();
