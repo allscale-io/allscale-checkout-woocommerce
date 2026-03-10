@@ -96,7 +96,7 @@ That's it — your store is now accepting crypto payments.
 
 ```bash
 # Clone the repo
-git clone https://github.com/shawnpang/allscale-checkout-woocommerce.git
+git clone https://github.com/allscale-io/allscale-checkout-woocommerce.git
 cd allscale-checkout-woocommerce
 
 # For local WordPress development, symlink into your plugins directory
