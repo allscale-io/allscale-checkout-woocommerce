@@ -55,9 +55,9 @@ Both methods are active by default. The return URL check ensures a good customer
 3. Upload the ZIP file and click **Install Now**.
 4. Click **Activate**.
 
-![Installing and activating WooCommerce](assets/install-activate-woocommerce.gif)
+![Installing WooCommerce](assets/install-woocommerce.gif)
 
-![Uploading and activating the Allscale plugin](assets/upload-activate-plugin.gif)
+![Uploading and activating the Allscale plugin](assets/upload-activate-allscale-plugin.gif)
 
 That's it — the plugin is now installed. Follow the [Setup Guide](#setup-guide) below to configure it.
 
