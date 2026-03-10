@@ -20,6 +20,8 @@ A WordPress/WooCommerce payment gateway plugin that lets merchants accept crypto
 4. Payment confirms on-chain and the order is updated automatically.
 5. The WooCommerce order is marked as paid and the customer sees a confirmation.
 
+![Sample checkout user flow](assets/checkout-user-flow.gif)
+
 ### How payment confirmation works
 
 The plugin uses two methods to confirm payments, so orders are updated reliably:
