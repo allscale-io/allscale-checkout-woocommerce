@@ -184,7 +184,7 @@ class Allscale_Webhook {
                 break;
 
             case self::STATUS_UNDERPAID:
-                $paid = isset($data['amount_cents']) ? $data['amount_cents'] : 'unknown';
+                $paid = isset($data['amount_cents']) ? intval($data['amount_cents']) : 'unknown';
                 $order->update_status('on-hold', 'Allscale: Underpaid. Received ' . $paid . ' cents.');
                 break;
 

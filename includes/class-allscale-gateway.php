@@ -67,11 +67,22 @@ class Allscale_Gateway extends WC_Payment_Gateway {
 
         $status = isset($result['data']['status']) ? intval($result['data']['status']) : 0;
 
-        // Only complete the order if Allscale confirms payment
+        // Only complete the order if Allscale confirms payment and amount matches
         if ($status === Allscale_Webhook::STATUS_CONFIRMED) {
             $tx_hash = isset($result['data']['tx_hash']) ? sanitize_text_field($result['data']['tx_hash']) : '';
-            $order->payment_complete($tx_hash);
-            $order->add_order_note('Allscale payment confirmed via return check. Tx: ' . $tx_hash);
+            $paid_cents = isset($result['data']['amount_cents']) ? intval($result['data']['amount_cents']) : 0;
+            $expected_cents = intval(round($order->get_total() * 100));
+
+            if ($paid_cents >= $expected_cents) {
+                $order->payment_complete($tx_hash);
+                $order->add_order_note('Allscale payment confirmed via return check. Tx: ' . $tx_hash);
+            } else {
+                $order->update_status('on-hold', sprintf(
+                    'Allscale payment amount mismatch. Expected: %d cents, Received: %d cents.',
+                    $expected_cents,
+                    $paid_cents
+                ));
+            }
         }
     }
 
@@ -203,7 +214,6 @@ class Allscale_Gateway extends WC_Payment_Gateway {
 
         // Store the checkout intent ID on the order
         $order->update_meta_data('_allscale_checkout_intent_id', $result['data']['allscale_checkout_intent_id']);
-        $order->update_meta_data('_allscale_checkout_url', $result['data']['checkout_url']);
         $order->save();
 
         // Mark as pending payment — WooCommerce will auto-cancel and restore stock

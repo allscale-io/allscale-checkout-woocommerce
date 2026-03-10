@@ -46,13 +46,6 @@ class Allscale_API {
     }
 
     /**
-     * Test API connectivity.
-     */
-    public function ping() {
-        return $this->request('GET', '/v1/test/ping');
-    }
-
-    /**
      * Create a checkout intent.
      */
     public function create_checkout_intent($currency_code, $amount_cents, $extra = []) {

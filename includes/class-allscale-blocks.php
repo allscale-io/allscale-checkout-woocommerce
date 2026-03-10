@@ -1,10 +1,10 @@
 <?php
 
-use Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType;
-
 if (!defined('ABSPATH')) {
     exit;
 }
+
+use Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType;
 
 final class Allscale_Blocks_Integration extends AbstractPaymentMethodType {
 
