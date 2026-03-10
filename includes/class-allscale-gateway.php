@@ -27,6 +27,46 @@ class Allscale_Gateway extends WC_Payment_Gateway {
             $webhook = new Allscale_Webhook($this->get_option('api_secret'));
             $webhook->register();
         }
+
+        // Check payment status when customer returns to thank-you page
+        add_action('woocommerce_thankyou_' . $this->id, [$this, 'check_payment_on_return']);
+    }
+
+    /**
+     * Check payment status via API when customer returns to the thank-you page.
+     * Acts as a fallback in case the webhook hasn't arrived yet.
+     */
+    public function check_payment_on_return($order_id) {
+        $order = wc_get_order($order_id);
+        if (!$order || $order->is_paid()) {
+            return;
+        }
+
+        $intent_id = $order->get_meta('_allscale_checkout_intent_id');
+        if (empty($intent_id)) {
+            return;
+        }
+
+        $api = new Allscale_API(
+            $this->get_option('api_key'),
+            $this->get_option('api_secret'),
+            $this->get_option('environment') === 'sandbox'
+        );
+
+        $result = $api->get_checkout_intent_status($intent_id);
+
+        if (!$result['success'] || empty($result['data'])) {
+            return;
+        }
+
+        $status = isset($result['data']['status']) ? intval($result['data']['status']) : 0;
+
+        // Only complete the order if Allscale confirms payment
+        if ($status === Allscale_Webhook::STATUS_CONFIRMED) {
+            $tx_hash = isset($result['data']['tx_hash']) ? sanitize_text_field($result['data']['tx_hash']) : '';
+            $order->payment_complete($tx_hash);
+            $order->add_order_note('Allscale payment confirmed via return check. Tx: ' . $tx_hash);
+        }
     }
 
     /**

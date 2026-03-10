@@ -15,8 +15,18 @@ A WordPress/WooCommerce payment gateway plugin that lets merchants accept crypto
 1. Customer places an order on your WooCommerce store and selects "Pay with Allscale".
 2. The plugin creates a checkout intent via the Allscale API.
 3. Customer is redirected to a hosted Allscale checkout page to complete payment using their Allscale account or a crypto wallet (MetaMask, Trust Wallet, etc.).
-4. Payment confirms on-chain and Allscale notifies your store via webhook.
-5. The WooCommerce order is automatically marked as paid.
+4. Payment confirms on-chain and the order is updated automatically.
+5. The WooCommerce order is marked as paid and the customer sees a confirmation.
+
+### How payment confirmation works
+
+The plugin uses two methods to confirm payments, so orders are updated reliably:
+
+- **Webhook (server-to-server):** Allscale sends a signed notification directly to your server when payment is confirmed on-chain. This is the primary method and works even if the customer closes their browser after paying. Requires configuring the webhook URL in your Allscale dashboard (see [Step 4](#step-4-set-up-the-webhook) in the setup guide).
+
+- **Return URL check (fallback):** When the customer is redirected back to your store's "thank you" page after paying, the plugin calls the Allscale API to check the payment status. If the payment is confirmed, the order is updated immediately — so the customer sees "Payment complete" right away, even if the webhook hasn't arrived yet.
+
+Both methods are active by default. The return URL check ensures a good customer experience (instant confirmation on the thank-you page), while the webhook ensures no payment is missed (covers cases where the customer closes their browser before returning).
 
 ## Features
 
