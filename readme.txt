@@ -3,7 +3,7 @@ Contributors: allscale
 Tags: woocommerce, payment gateway, crypto, usdt, stablecoin, non-custodial
 Requires at least: 5.8
 Tested up to: 6.5
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -66,6 +66,9 @@ No. Allscale is non-custodial; funds settle directly to your wallet. To refund a
 USD, AUD, CAD, CNY, EUR, GBP, HKD, JPY, SGD. You can also enable **native USDT pricing** for crypto-first stores.
 
 == Changelog ==
+
+= 1.0.1 =
+* **Fix critical activation fatal** — `class Gateway extends \WC_Payment_Gateway` was loaded unconditionally at plugin file load, causing a fatal error on sites where the plugin folder name sorts before "woocommerce" (e.g. when installed from a GitHub release ZIP whose folder is `allscale-checkout-woocommerce-1.0.0/`). The class is now loaded lazily inside `Plugin::boot()` after the WC parent class is confirmed available. Matches the same fix already applied to `Blocks_Integration` in 1.0.0.
 
 = 1.0.0 =
 * First stable release. Full rewrite of the 0.1.x community beta.

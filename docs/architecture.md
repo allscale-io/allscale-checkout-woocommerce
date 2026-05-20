@@ -303,19 +303,17 @@ allscale-checkout-woocommerce/
 │   ├── class-blocks-integration.php
 │   └── class-migrations.php
 ├── assets/
-│   ├── icon.png
-│   ├── checkout-user-flow.gif             # README assets, retained
-│   ├── install-woocommerce.gif
-│   ├── upload-activate-allscale-plugin.gif
-│   ├── allscale-plugin-settings.gif
-│   ├── setup-demo.gif
-│   ├── woocommerce-payments-setup.png
+│   ├── icon.png                           # Allscale brand mark
+│   ├── logo.svg                           # Wordmark with green corner brackets
+│   ├── usdt.png                           # USDT badge for checkout
+│   ├── chains/                            # Per-chain mark images
+│   │   ├── eth.png  polygon.png  base.png
+│   │   └── bnb.png  arbitrum.png  optimism.png
 │   ├── js/
-│   │   ├── allscale-blocks.js             # Block-based checkout JS (carried forward)
-│   │   └── admin-test-connection.js       # New: Test connection button AJAX
+│   │   ├── admin.js                       # Settings page interactivity
+│   │   └── blocks.js                      # Block-based checkout integration
 │   └── css/
-│       └── admin.css                      # New: settings page custom styling
-└── .distignore                            # Excludes docs/, *.gif (heavy), tests/, etc. from release zip
+│       └── admin.css                      # Scoped admin + wizard styles
 ```
 
 ---

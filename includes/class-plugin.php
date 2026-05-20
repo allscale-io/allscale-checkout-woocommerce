@@ -63,6 +63,15 @@ final class Plugin {
 			return;
 		}
 
+		// Now that we know WC_Payment_Gateway exists, load our gateway class.
+		// Doing this eagerly at the top of the main plugin file produced a
+		// fatal in installs where this plugin loads before WooCommerce (e.g.
+		// a folder name like "allscale-checkout-woocommerce-1.0.0" sorts
+		// before "woocommerce" so WP's alphabetical plugin loader hits us
+		// first and our class Gateway extends \WC_Payment_Gateway can't
+		// resolve its parent).
+		require_once ALLSCALE_CHECKOUT_PATH . 'includes/class-gateway.php';
+
 		// Webhook handler is registered unconditionally — does not depend on
 		// the gateway constructor running.
 		$webhook = new Webhook_Handler( new Logger( $this->is_debug_enabled() ) );
