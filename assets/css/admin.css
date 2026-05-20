@@ -1,0 +1,484 @@
+/**
+ * Allscale Checkout — WordPress admin styles.
+ *
+ * Scoped under .allscale-admin and .allscale-metabox to avoid leaking into
+ * other admin screens. Variables are scoped likewise so they inherit cleanly
+ * from the WP fresh palette and can be themed without affecting WP core.
+ */
+
+.allscale-admin,
+.allscale-metabox {
+	--wp-bg:        #f0f0f1;
+	--wp-card:      #ffffff;
+	--wp-text:      #1d2327;
+	--wp-text2:     #50575e;
+	--wp-text3:     #787c82;
+	--wp-border:    #c3c4c7;
+	--wp-border2:   #dcdcde;
+	--wp-link:      #2271b1;
+	--wp-link-h:    #135e96;
+	--wp-blue:      #2271b1;
+
+	--n-info:       #72aee6;
+	--n-success:    #00a32a;
+	--n-warning:    #dba617;
+	--n-error:      #d63638;
+
+	/* AllScale brand accent. Used in welcome banner gradient and chevron. */
+	--as-green:     #009859;
+	--as-green-l:   #e5faf1;
+	--as-teal:      #0f9b8e;
+	--as-teal-l:    #e6f6f4;
+	--brand:        var(--as-teal);
+	--brand-l:      var(--as-teal-l);
+
+	--font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* =========================================================================
+   Settings page layout
+   ========================================================================= */
+.allscale-admin {
+	max-width: 920px;
+	margin-top: 8px;
+	color: var(--wp-text);
+	font-size: 14px;
+	line-height: 1.5;
+}
+
+.allscale-admin * { box-sizing: border-box; }
+
+.allscale-admin .as-page-header {
+	margin-bottom: 14px;
+}
+
+.allscale-admin .as-back-link {
+	font-size: 13px;
+	color: var(--wp-link);
+	text-decoration: none;
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+.allscale-admin .as-back-link:hover { color: var(--wp-link-h); text-decoration: underline; }
+
+.allscale-admin .as-page-title-row {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin-top: 6px;
+}
+.allscale-admin .as-mark {
+	width: auto;
+	height: 36px;
+	display: inline-block;
+	flex: 0 0 auto;
+}
+.allscale-admin .as-page-title {
+	margin: 0;
+	font-size: 20px;
+	font-weight: 600;
+	color: var(--wp-text);
+	line-height: 1.2;
+}
+.allscale-admin .as-page-tagline {
+	font-size: 13px;
+	color: var(--wp-text2);
+	margin-top: 2px;
+}
+
+/* =========================================================================
+   Welcome banner (empty state)
+   ========================================================================= */
+.allscale-admin .as-welcome {
+	position: relative;
+	border: 1px solid var(--wp-border);
+	border-radius: 6px;
+	padding: 20px 24px;
+	background: linear-gradient(135deg, var(--brand-l) 0%, #ffffff 60%);
+	overflow: hidden;
+	margin-bottom: 14px;
+}
+.allscale-admin .as-welcome-bg {
+	position: absolute;
+	right: -10px;
+	bottom: -16px;
+	opacity: 0.07;
+	pointer-events: none;
+}
+.allscale-admin .as-welcome-bg img { width: 140px; height: auto; display: block; }
+.allscale-admin .as-welcome-title {
+	margin: 0;
+	font-size: 17px;
+	font-weight: 600;
+	color: var(--wp-text);
+	position: relative;
+}
+.allscale-admin .as-welcome-subtitle {
+	font-size: 13.5px;
+	color: var(--wp-text2);
+	margin-top: 4px;
+	margin-bottom: 14px;
+	position: relative;
+}
+.allscale-admin .as-welcome-steps {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	display: flex;
+	gap: 24px;
+	flex-wrap: wrap;
+	position: relative;
+}
+.allscale-admin .as-welcome-steps li {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	max-width: 260px;
+	flex: 1 1 200px;
+	font-size: 13.5px;
+	color: var(--wp-text);
+	line-height: 1.4;
+	padding-top: 3px;
+}
+.allscale-admin .as-step-bullet {
+	flex: 0 0 auto;
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	background: var(--brand);
+	color: #fff;
+	font-size: 12px;
+	font-weight: 700;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	margin-top: -3px;
+}
+
+/* =========================================================================
+   Section cards
+   ========================================================================= */
+.allscale-admin .as-card {
+	background: var(--wp-card);
+	border: 1px solid var(--wp-border);
+	border-radius: 4px;
+	margin-bottom: 14px;
+	transition: border-color .15s, box-shadow .15s, opacity .15s;
+}
+.allscale-admin .as-card-attention {
+	border-color: var(--wp-blue);
+	box-shadow: 0 0 0 1px var(--wp-blue);
+}
+.allscale-admin .as-card-muted { opacity: 0.7; }
+.allscale-admin .as-card-collapsible .as-card-header { cursor: pointer; user-select: none; }
+
+.allscale-admin .as-card-header {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 12px 16px;
+	border-bottom: 1px solid var(--wp-border2);
+}
+.allscale-admin .as-card-collapsible[data-collapsed] .as-card-header { border-bottom: none; }
+
+.allscale-admin .as-card-header h3 {
+	margin: 0;
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--wp-text);
+	flex: 1;
+	line-height: 1.4;
+}
+
+.allscale-admin .as-step-num {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 22px;
+	height: 22px;
+	border-radius: 50%;
+	background: var(--wp-blue);
+	color: #fff;
+	font-size: 12px;
+	font-weight: 700;
+	flex: 0 0 auto;
+}
+
+.allscale-admin .as-card-body {
+	padding: 18px 20px;
+}
+
+.allscale-admin .as-chevron {
+	color: var(--wp-text2);
+	font-size: 16px;
+	line-height: 1;
+	transition: transform .2s;
+	display: inline-block;
+}
+.allscale-admin .as-card-collapsible[data-collapsed] .as-chevron { transform: rotate(-90deg); }
+
+/* =========================================================================
+   Form rows — 180px label | flex control
+   ========================================================================= */
+.allscale-admin .as-form-row {
+	display: grid;
+	grid-template-columns: 180px 1fr;
+	gap: 12px 24px;
+	align-items: start;
+	padding: 12px 0;
+}
+.allscale-admin .as-form-row + .as-form-row {
+	border-top: 1px solid var(--wp-border2);
+}
+.allscale-admin .as-form-label {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--wp-text);
+	padding-top: 8px;
+}
+.allscale-admin .as-form-control { min-width: 0; }
+.allscale-admin .as-form-control .description {
+	font-size: 13px;
+	color: var(--wp-text2);
+	margin: 6px 0 0;
+	line-height: 1.45;
+}
+.allscale-admin .as-form-control .description a { color: var(--wp-link); text-decoration: none; }
+.allscale-admin .as-form-control .description a:hover { color: var(--wp-link-h); text-decoration: underline; }
+
+.allscale-admin .as-form-control input[type="text"],
+.allscale-admin .as-form-control input[type="password"],
+.allscale-admin .as-form-control textarea {
+	width: 100%;
+	max-width: 480px;
+}
+
+/* =========================================================================
+   Toggle (checkbox + label + help text)
+   ========================================================================= */
+.allscale-admin .as-toggle {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	cursor: pointer;
+}
+.allscale-admin .as-toggle input[type="checkbox"] {
+	margin-top: 2px;
+}
+.allscale-admin .as-toggle-label {
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--wp-text);
+	display: block;
+}
+.allscale-admin .as-toggle-help {
+	display: block;
+	font-size: 12.5px;
+	color: var(--wp-text2);
+	margin-top: 4px;
+	line-height: 1.4;
+}
+
+/* =========================================================================
+   API secret — show/hide field wrapper
+   ========================================================================= */
+.allscale-admin .as-secret-wrap {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	max-width: 480px;
+}
+.allscale-admin .as-secret-wrap input { flex: 1; }
+.allscale-admin .as-toggle-secret { flex: 0 0 auto; }
+
+/* =========================================================================
+   Code / URL block
+   ========================================================================= */
+.allscale-admin .as-codeblock {
+	display: flex;
+	gap: 8px;
+	align-items: stretch;
+	max-width: 100%;
+	flex-wrap: wrap;
+}
+.allscale-admin .as-code {
+	flex: 1;
+	min-width: 0;
+	display: inline-flex;
+	align-items: center;
+	background: #f6f7f7;
+	border: 1px solid var(--wp-border2);
+	border-radius: 4px;
+	padding: 8px 12px;
+	font-family: var(--font-mono);
+	font-size: 13px;
+	color: var(--wp-text);
+	user-select: all;
+	overflow-x: auto;
+	white-space: nowrap;
+}
+.allscale-admin .as-copy-btn {
+	flex: 0 0 auto;
+}
+
+/* =========================================================================
+   Status pill
+   ========================================================================= */
+.as-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 13px;
+	line-height: 1;
+	color: var(--wp-text);
+}
+.as-pill-dot {
+	width: 9px;
+	height: 9px;
+	border-radius: 50%;
+	display: inline-block;
+	flex: 0 0 auto;
+	box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.04);
+}
+.dot-green  { background: #00a32a; }
+.dot-yellow { background: #dba617; }
+.dot-red    { background: #d63638; }
+.dot-gray   { background: #a7aaad; }
+.dot-blue   { background: #72aee6; }
+
+/* =========================================================================
+   Test connection block
+   ========================================================================= */
+.allscale-admin .as-test-conn {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 12px;
+}
+.allscale-admin .as-test-conn .spinner {
+	display: inline-block;
+	width: 14px;
+	height: 14px;
+	border-radius: 50%;
+	border: 2px solid currentColor;
+	border-top-color: transparent;
+	animation: as-spin .8s linear infinite;
+	vertical-align: middle;
+}
+@keyframes as-spin { to { transform: rotate(360deg); } }
+
+.allscale-admin .as-test-error {
+	flex: 1 1 100%;
+	margin-top: 6px;
+	padding: 10px 12px;
+	background: #fcf0f1;
+	border-left: 3px solid var(--n-error);
+	border-radius: 2px;
+	font-size: 13px;
+	color: var(--wp-text);
+	line-height: 1.45;
+}
+
+/* =========================================================================
+   Inline warning block (used under webhook-status when stale)
+   ========================================================================= */
+.allscale-admin .as-inline-warning {
+	margin-top: 8px;
+	padding: 10px 12px;
+	background: #fdf6e3;
+	border-left: 3px solid var(--n-warning);
+	border-radius: 2px;
+	font-size: 13px;
+	color: var(--wp-text);
+	line-height: 1.5;
+	max-width: 640px;
+}
+
+/* =========================================================================
+   Top-of-page warning notice (currency unsupported)
+   ========================================================================= */
+.allscale-admin .as-notice {
+	display: flex;
+	gap: 12px;
+	align-items: flex-start;
+	background: #fff;
+	border: 1px solid var(--wp-border2);
+	border-left-width: 4px;
+	border-left-style: solid;
+	padding: 12px 16px;
+	margin-bottom: 14px;
+}
+.allscale-admin .as-notice-warning { border-left-color: var(--n-warning); }
+.allscale-admin .as-notice-error   { border-left-color: var(--n-error); }
+.allscale-admin .as-notice-success { border-left-color: var(--n-success); }
+.allscale-admin .as-notice-info    { border-left-color: var(--n-info); }
+.allscale-admin .as-notice-icon { flex: 0 0 auto; line-height: 0; padding-top: 2px; }
+.allscale-admin .as-notice-icon .dashicons { font-size: 20px; width: 20px; height: 20px; color: var(--n-warning); }
+.allscale-admin .as-notice-error .as-notice-icon .dashicons { color: var(--n-error); }
+.allscale-admin .as-notice-title { font-weight: 600; color: var(--wp-text); margin-bottom: 2px; }
+.allscale-admin .as-notice-text { color: var(--wp-text2); font-size: 13px; line-height: 1.45; }
+.allscale-admin .as-notice-text a { color: var(--wp-link); }
+
+/* =========================================================================
+   Mobile (WP admin breakpoint = 782px)
+   ========================================================================= */
+@media (max-width: 782px) {
+	.allscale-admin .as-form-row {
+		grid-template-columns: 1fr;
+		gap: 4px;
+	}
+	.allscale-admin .as-form-label {
+		padding-top: 0;
+	}
+	.allscale-admin .as-secret-wrap {
+		flex-wrap: wrap;
+	}
+	.allscale-admin .as-codeblock {
+		flex-direction: column;
+		align-items: stretch;
+	}
+	.allscale-admin .as-copy-btn {
+		align-self: flex-start;
+	}
+}
+
+/* =========================================================================
+   Order meta box
+   ========================================================================= */
+.allscale-metabox {
+	font-size: 13px;
+	color: var(--wp-text);
+}
+.allscale-metabox .meta-row {
+	display: grid;
+	grid-template-columns: 86px 1fr;
+	gap: 6px 12px;
+	align-items: center;
+	padding: 7px 0;
+}
+.allscale-metabox .meta-label {
+	color: var(--wp-text2);
+	font-weight: 500;
+}
+.allscale-metabox .meta-val {
+	color: var(--wp-text);
+	font-weight: 500;
+	word-break: break-all;
+}
+.allscale-metabox .meta-val.mono { font-family: var(--font-mono); font-size: 12.5px; }
+.allscale-metabox .meta-unit { color: var(--wp-text2); font-size: 12px; font-weight: 400; }
+.allscale-metabox .meta-hr {
+	height: 1px;
+	background: var(--wp-border2);
+	border: 0;
+	margin: 8px 0;
+}
+.allscale-metabox .meta-link {
+	color: var(--wp-link);
+	font-size: 12px;
+	margin-left: 6px;
+	white-space: nowrap;
+	text-decoration: none;
+}
+.allscale-metabox .meta-link:hover { text-decoration: underline; color: var(--wp-link-h); }
