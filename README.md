@@ -5,7 +5,7 @@ A WordPress / WooCommerce payment gateway that lets merchants accept crypto paym
 ## Why Allscale?
 
 - **Non-custodial.** Funds go straight to your wallet. No platform holds your money. No account freezes.
-- **Low fees.** 0.5% per transaction (vs. ~3% on traditional processors).
+- **Low fees.** 0.6% per transaction with a $0.10 minimum (vs. ~3% on traditional processors).
 - **Instant settlement.** On-chain USDT — no multi-day payout delays.
 - **Permissionless setup.** Sign up, paste your credentials, start accepting payments.
 
@@ -44,13 +44,27 @@ Both paths share a single status-mapping decision table and run inside an order 
 - PHP 7.4+
 - An [Allscale account](https://allscale.io) with Commerce enabled
 
-> **First time?** Sign up at [allscale.io](https://allscale.io). Allscale is non-custodial, charges only 0.5% per transaction, and settles instantly as USDT to your own wallet.
+> **First time?** Sign up at [allscale.io](https://allscale.io). Allscale is non-custodial, charges 0.6% per transaction (minimum $0.10), and settles instantly as USDT to your own wallet.
+
+## Requires WooCommerce
+
+Allscale Checkout is a **WooCommerce payment gateway** — it can't function without WooCommerce installed and active. If you activate this plugin on a site that doesn't have WooCommerce, the plugin won't crash; instead it shows a branded notice with a one-click action to install or activate WooCommerce.
+
+![Notice shown when WooCommerce isn't active](docs/screenshots/wc-required-notice.png)
+
+Two states are handled:
+
+- **WooCommerce isn't installed** — the CTA reads "Install WooCommerce" and links to WordPress's plugin installer (one click installs from WP.org with a valid nonce).
+- **WooCommerce is installed but inactive** — the CTA reads "Activate WooCommerce" and links to the plugin activation action.
+
+Once WooCommerce is active, the notice disappears and the plugin proceeds normally to its setup wizard.
 
 ## Installation
 
 1. Download the latest release ZIP from [GitHub](https://github.com/allscale-io/allscale-checkout-woocommerce/archive/refs/heads/main.zip).
 2. In your WordPress admin, go to **Plugins → Add New → Upload Plugin**, choose the ZIP, click **Install Now**, then **Activate**.
-3. Open **WooCommerce → Settings → Payments → Allscale Checkout** and follow the in-page welcome.
+3. If WooCommerce isn't already installed and active, the notice above will guide you through that step first.
+4. Open **WooCommerce → Settings → Payments → Allscale Checkout** and follow the in-page welcome.
 
 ## Setup
 

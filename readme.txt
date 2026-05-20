@@ -3,12 +3,12 @@ Contributors: allscale
 Tags: woocommerce, payment gateway, crypto, usdt, stablecoin, non-custodial
 Requires at least: 5.8
 Tested up to: 6.5
-Stable tag: 1.0.1
+Stable tag: 0.0.1
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Accept crypto payments in WooCommerce with 0.5% fees and instant USDT settlement to your own wallet. Non-custodial.
+Accept crypto payments in WooCommerce with a 0.6% fee (minimum $0.10) and instant USDT settlement to your own wallet. Non-custodial.
 
 == Description ==
 
@@ -17,7 +17,7 @@ Allscale Checkout is a WooCommerce payment gateway that lets your customers pay 
 = Why use Allscale? =
 
 * **Non-custodial.** Funds go straight to your wallet. No third party holds your money. No account freezes.
-* **Low fees.** 0.5% per transaction (vs. ~3% on traditional processors).
+* **Low fees.** 0.6% per transaction with a $0.10 minimum (vs. ~3% on traditional processors).
 * **Instant settlement.** On-chain USDT — no waiting days for payouts.
 * **Permissionless setup.** Sign up, paste your credentials, start accepting payments.
 
@@ -67,26 +67,34 @@ USD, AUD, CAD, CNY, EUR, GBP, HKD, JPY, SGD. You can also enable **native USDT p
 
 == Changelog ==
 
-= 1.0.1 =
-* **Fix critical activation fatal** — `class Gateway extends \WC_Payment_Gateway` was loaded unconditionally at plugin file load, causing a fatal error on sites where the plugin folder name sorts before "woocommerce" (e.g. when installed from a GitHub release ZIP whose folder is `allscale-checkout-woocommerce-1.0.0/`). The class is now loaded lazily inside `Plugin::boot()` after the WC parent class is confirmed available. Matches the same fix already applied to `Blocks_Integration` in 1.0.0.
-* **Branded "needs WooCommerce" notice** — Replaced the default red error bar with a brand-styled gradient card that distinguishes "WooCommerce not installed" from "WooCommerce installed but inactive" and provides a one-click CTA (Install or Activate) deep-linked with a valid nonce.
+= 0.0.1 =
+First pre-release of the AllScale Checkout rewrite. Deliberately labeled v0 — not yet production-stable, expect rough edges.
 
-= 1.0.0 =
-* First stable release. Full rewrite of the 0.1.x community beta.
-* Removed sandbox toggle (Allscale API no longer ships a separate sandbox URL).
-* Expanded status enum to the 12 documented Allscale statuses (TIMEOUT, PAYING, TEMP_WALLET_RECEIVED, PENDING_MANUAL_OPERATION, SEND_BACK).
-* Return-URL fallback now reads full intent details (status endpoint returns a bare int — the 0.1.x fallback never worked correctly).
-* New: Test connection button + AJAX endpoint.
-* New: Settings save rejects bad credentials before they're stored.
-* New: Per-order Allscale Payment meta box with tx hash + chain explorer link.
-* New: Webhook health observation (last received, first-webhook celebration, stale warning).
-* Fixed: Webhook handler now registered unconditionally on `init`, not from the gateway constructor.
-* Fixed: UTF-8 truncation bug (now uses `mb_strimwidth`).
-* Fixed: Race between webhook and return-URL fallback (order locker).
-* Fixed: Removed redundant pending-status update.
+Major changes vs the prior 0.1.x community beta:
+
+* Sandbox toggle removed (Allscale API consolidated to one base URL — use test-store credentials to test).
+* Status enum expanded from 6 to all 12 documented Allscale states.
+* Return-URL fallback now reads full intent details (the 0.1.x fallback used the wrong endpoint and never worked correctly).
+* `redirect_url` moved to top level; `user_id` / `user_name` now sent.
+* Allscale error codes mapped to user-facing copy.
+* 0.1 USDT minimum payment enforced up-front.
+* Settings save validates credentials via `/v1/test/ping` before storing them.
+* New: 4-step setup wizard on first activation.
+* New: Test connection button in settings (AJAX-backed).
+* New: Allscale Payment meta box on each order — status pill, paid/fee/net breakdown, tx hash with block-explorer link, payment-method type, chain badge.
+* New: Front-end thank-you status block (confirmed / pending with auto-refresh / failed).
+* New: Webhook health observation (last-received timestamp, first-webhook celebration, stale-after-7-days warning).
+* New: Native USDT pricing opt-in for crypto-first stores.
+* New: Branded "needs WooCommerce" notice with one-click Install or Activate CTA.
+* Fixed: Webhook handler now registered unconditionally on `init`, no longer dependent on the gateway constructor running.
+* Fixed: `mb_strimwidth` for order descriptions — CJK / emoji product names no longer get sliced mid-character.
+* Fixed: Order_Locker mutex around state mutations — webhook + return-URL fallback can't race.
+* Fixed: Late failure-state webhooks no longer revert already-paid orders.
+* Fixed: `cancelled` added to terminal-status exclusion.
+* Fixed: Gateway and Blocks_Integration classes now lazy-loaded after their WooCommerce parents are confirmed available — avoids a fatal when this plugin loads before WooCommerce.
 * Full i18n with text domain `allscale-checkout`.
 
 == Upgrade Notice ==
 
-= 1.0.0 =
-Major rewrite. Sandbox mode has been retired — use test-store credentials. The first activation after upgrade will show a one-time notice if your previous setting was sandbox.
+= 0.0.1 =
+First v0 release. Sandbox mode has been retired — use test-store credentials. If you're coming from the 0.1.x community beta, the first activation will show a one-time notice if your previous environment setting was sandbox.

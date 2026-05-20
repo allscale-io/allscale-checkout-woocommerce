@@ -201,7 +201,7 @@ final class Admin {
 					<div>
 						<h2 class="as-page-title"><?php esc_html_e( 'Allscale Checkout', 'allscale-checkout' ); ?></h2>
 						<div class="as-page-tagline">
-							<?php esc_html_e( 'Accept crypto payments — 0.5% fees, instant USDT settlement to your own wallet.', 'allscale-checkout' ); ?>
+							<?php esc_html_e( 'Accept crypto payments — 0.6% fees (min $0.10), instant USDT settlement to your own wallet.', 'allscale-checkout' ); ?>
 						</div>
 					</div>
 				</div>

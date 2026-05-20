@@ -23,37 +23,40 @@ final class Migrations {
 			return;
 		}
 
-		// Fresh install — no migrations to run, just stamp the version.
-		if ( $stored === '' ) {
-			update_option( Plugin::OPT_VERSION, ALLSCALE_CHECKOUT_VERSION, false );
-			return;
-		}
-
-		// Upgrade path from anything 0.x to 1.0.
-		if ( version_compare( $stored, '1.0.0', '<' ) ) {
-			self::migrate_to_1_0_0();
-		}
+		// Always run the legacy migration check on a version mismatch. The
+		// check is keyed on the presence of the now-removed `environment`
+		// setting, NOT on version comparison — so it's safe to call on every
+		// upgrade (idempotent: after first run, the signal is gone) and we
+		// avoid any ordering pitfalls between the prior 0.1.x community beta
+		// and the current 0.0.x rewrite.
+		self::maybe_migrate_from_legacy_beta();
 
 		update_option( Plugin::OPT_VERSION, ALLSCALE_CHECKOUT_VERSION, false );
 	}
 
 	/**
-	 * 0.1.x → 1.0.0:
-	 * - If the old "environment" setting was "sandbox", queue the sandbox-retired
-	 *   admin notice. The setting itself is no longer rendered, so the stored
-	 *   value is harmless but we surface it for the merchant.
-	 * - Drop the now-defunct `environment` setting from stored options.
-	 * - Legacy `_allscale_checkout_intent_id` order meta keys keep working via
-	 *   dual-read in Webhook_Handler and Gateway; we don't rewrite them.
+	 * Migrate from the prior 0.1.x community beta.
+	 *
+	 * Signal: the stored gateway settings still contain the `environment`
+	 * field. The new plugin doesn't render or use that field, so its presence
+	 * uniquely identifies "we just upgraded from 0.1.x".
+	 *
+	 * Actions:
+	 * - If `environment` was "sandbox", queue the sandbox-retired admin notice.
+	 * - Drop the defunct `environment` key from stored options (makes this
+	 *   migration idempotent — second run finds no signal, no-ops).
+	 * - Legacy `_allscale_checkout_intent_id` order meta keys keep working
+	 *   via dual-read in Webhook_Handler and Gateway; we don't rewrite them.
 	 */
-	private static function migrate_to_1_0_0() {
+	private static function maybe_migrate_from_legacy_beta() {
 		$settings = Plugin::settings();
-		if ( ! empty( $settings['environment'] ) && 'sandbox' === $settings['environment'] ) {
+		if ( ! isset( $settings['environment'] ) ) {
+			return;
+		}
+		if ( 'sandbox' === $settings['environment'] ) {
 			update_option( Plugin::OPT_SHOW_SANDBOX_NOTICE, true, false );
 		}
-		if ( isset( $settings['environment'] ) ) {
-			unset( $settings['environment'] );
-			update_option( 'woocommerce_' . Gateway::ID . '_settings', $settings );
-		}
+		unset( $settings['environment'] );
+		update_option( 'woocommerce_' . Gateway::ID . '_settings', $settings );
 	}
 }

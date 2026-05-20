@@ -191,7 +191,7 @@ final class Webhook_Handler {
 	/**
 	 * Look up the WooCommerce order that owns this intent id.
 	 *
-	 * Reads both the v1.0 meta key and the legacy 0.1.x key for in-flight
+	 * Reads both the current meta key and the legacy 0.1.x key for in-flight
 	 * orders that were created before the upgrade.
 	 *
 	 * @param string $intent_id Allscale intent id.

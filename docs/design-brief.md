@@ -10,7 +10,7 @@
 
 **Who installs it.** A small-business merchant who already runs a WooCommerce store. Not a developer. Probably has used Stripe / PayPal plugins before. Reads English (we will also produce localized strings later, but the English copy is what the designer should design around).
 
-**Why they install it.** Lower fees than Stripe/PayPal (0.5% vs ~3%), instant settlement, no chargebacks, no account freezes. The product's value prop is that the merchant **owns their funds the whole time**.
+**Why they install it.** Lower fees than Stripe/PayPal (0.6% per transaction with a $0.10 minimum vs ~3%), instant settlement, no chargebacks, no account freezes. The product's value prop is that the merchant **owns their funds the whole time**.
 
 **Brand vibe.**
 - Trustworthy, calm, technical-but-not-intimidating. Closer to **Stripe Dashboard** than to **Crypto Twitter**.
@@ -76,9 +76,9 @@ P0 surfaces below are described in detail. P1 are sketched at the end.
 
 **Layout.** This is rendered by WordPress core. We control:
 - **Plugin name** (header): `Allscale Checkout for WooCommerce`
-- **Description** (1-2 sentences below name): `Accept crypto payments with 0.5% fees and instant USDT settlement to your own wallet. Non-custodial — your funds are never held by a third party. Requires a free Allscale account.`
+- **Description** (1-2 sentences below name): `Accept crypto payments with 0.6% fees (min $0.10) and instant USDT settlement to your own wallet. Non-custodial — your funds are never held by a third party. Requires a free Allscale account.`
 - **Action links** (left side, before Activate/Deactivate): `Settings | Deactivate`
-- **Meta line** (right side): `Version 1.0.0 | By Allscale community | View details | Visit plugin site`
+- **Meta line** (right side): `Version 0.0.1 | By Allscale community | View details | Visit plugin site`
 
 **Design ask.** Nothing custom — this is pure WP. Designer should NOT mock this up unless they want to show WP context around it.
 

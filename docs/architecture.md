@@ -1,6 +1,6 @@
-# Allscale Checkout for WooCommerce — v1.0 Rebuild Architecture
+# Allscale Checkout for WooCommerce — v0.0.x Rebuild Architecture
 
-This document describes the architecture for the v1.0 rebuild of the plugin. It captures (a) what changed in the underlying Allscale Checkout API since the 0.1.x plugin was written, (b) how the rebuild is structured, (c) how each known issue in 0.1.x is resolved, and (d) what is in and out of scope for v1.
+This document describes the architecture for the v0.0.x pre-release rebuild of the plugin (deliberately labeled v0 — not yet production-stable). It captures (a) what changed in the underlying Allscale Checkout API since the 0.1.x plugin was written, (b) how the rebuild is structured, (c) how each known issue in 0.1.x is resolved, and (d) what is in and out of scope for v1.
 
 For the UI specification that pairs with this architecture, see [`design-brief.md`](./design-brief.md).
 
@@ -75,7 +75,7 @@ A singleton entry point. The main file `allscale-checkout.php` defines the plugi
 4. Instantiate and register `Webhook_Handler` on the `init` hook **unconditionally** — does not depend on the gateway constructor running. This is the fix for issue 1.
 5. Register the gateway via `woocommerce_payment_gateways` filter on `plugins_loaded`.
 6. Start `Admin` if `is_admin()`.
-7. Run `Migrations::maybe_run()` to handle 0.1.x → 1.0.0 transitions.
+7. Run `Migrations::maybe_run()` to handle 0.1.x → 0.0.x transitions.
 
 ### 4.2 API client (`includes/class-api-client.php`)
 
@@ -265,7 +265,7 @@ Carried forward from 0.1.x essentially unchanged — extends `AbstractPaymentMet
 
 `maybe_run()` checks the stored plugin version against `ALLSCALE_CHECKOUT_VERSION` and runs idempotent migrations:
 
-- **0.1.x → 1.0.0**: if the stored option `environment` was `sandbox`, queue the sandbox-retired admin notice (one-time). Rename option keys if necessary. The existing `_allscale_checkout_intent_id` order meta is kept under the new key `_allscale_intent_id` via a dual-read fallback so in-flight orders aren't broken.
+- **0.1.x → 0.0.x**: if the stored option `environment` was `sandbox`, queue the sandbox-retired admin notice (one-time). Rename option keys if necessary. The existing `_allscale_checkout_intent_id` order meta is kept under the new key `_allscale_intent_id` via a dual-read fallback so in-flight orders aren't broken.
 
 After a successful run, the stored version option is updated.
 
@@ -335,7 +335,7 @@ allscale-checkout-woocommerce/
 
 ## 7. Scope
 
-### v1.0 — in scope
+### v0.0.x — in scope
 
 - All deltas in §1 (sandbox removal, redirect_url at top level, expanded status enum, intent details vs status endpoint, error code mapping, 0.1 USDT minimum, webhook_id verification).
 - All known issue fixes in §3.
@@ -345,12 +345,12 @@ allscale-checkout-woocommerce/
 - Admin notices system (7 notice types from the design brief).
 - Logger wrapper with debug toggle.
 - Full i18n.
-- 0.1.x → 1.0.0 migration with sandbox-retired notice.
+- 0.1.x → 0.0.x migration with sandbox-retired notice.
 - Native USDT pricing as an opt-in setting.
 - Webhook health observation: `last_webhook_at` and first-webhook celebration notice.
 - README and `readme.txt` rewrite.
 
-### v1.0 — explicitly out of scope (deferred)
+### v0.0.x — explicitly out of scope (deferred)
 
 - **Setup wizard** (P1 in the design brief — additive, can land in 1.1).
 - **Block-based checkout client-side enhancements** (label/description only in v1; deeper React surface in 1.1).
@@ -363,12 +363,12 @@ allscale-checkout-woocommerce/
 
 ---
 
-## 8. Migration plan (0.1.x → 1.0.0)
+## 8. Migration plan (0.1.x → 0.0.x)
 
 For merchants upgrading in place:
 
 1. **Settings option key** is preserved (`woocommerce_allscale_checkout_settings`). No data loss.
-2. **Order meta keys** for in-flight orders: the new code reads both `_allscale_checkout_intent_id` (legacy) and `_allscale_intent_id` (new), preferring the new one. After 1.0.0, new orders only write the new key.
+2. **Order meta keys** for in-flight orders: the new code reads both `_allscale_checkout_intent_id` (legacy) and `_allscale_intent_id` (new), preferring the new one. After 0.0.1, new orders only write the new key.
 3. **`environment` setting**: if previously `sandbox`, queue the migration notice telling the merchant sandbox is retired and to use test-store credentials. The field is no longer rendered in settings; the stored value is silently ignored on upgrade.
 4. **Webhook URL** is unchanged. No action required from the merchant.
 5. **Credentials**: existing API key and secret remain valid (no rotation forced). The first save after upgrade re-validates them via the new pre-save ping; if they were already valid before, validation passes silently.

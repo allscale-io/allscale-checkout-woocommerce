@@ -19,7 +19,7 @@ class Gateway extends \WC_Payment_Gateway {
 		$this->id                 = self::ID;
 		$this->method_title       = __( 'Allscale Checkout', 'allscale-checkout' );
 		$this->method_description = __(
-			'Accept crypto payments — 0.5% fees, instant USDT settlement to your own wallet. Non-custodial: funds go directly to your wallet and are never held by a third party. Requires a free Allscale account.',
+			'Accept crypto payments — 0.6% fees with a $0.10 minimum, instant USDT settlement to your own wallet. Non-custodial: funds go directly to your wallet and are never held by a third party. Requires a free Allscale account.',
 			'allscale-checkout'
 		);
 		$this->has_fields         = false;

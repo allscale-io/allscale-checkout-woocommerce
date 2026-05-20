@@ -329,7 +329,7 @@ final class Setup_Wizard {
 		?>
 		<h2 class="aw-title"><?php esc_html_e( 'Welcome to Allscale Checkout.', 'allscale-checkout' ); ?></h2>
 		<p class="aw-subtitle">
-			<?php esc_html_e( 'Accept crypto payments — 0.5% fees, instant USDT settlement to your own wallet. This setup takes about 3 minutes.', 'allscale-checkout' ); ?>
+			<?php esc_html_e( 'Accept crypto payments — 0.6% fees (min $0.10), instant USDT settlement to your own wallet. This setup takes about 3 minutes.', 'allscale-checkout' ); ?>
 		</p>
 
 		<div class="aw-shield">
