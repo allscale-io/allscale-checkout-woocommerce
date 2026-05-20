@@ -44,8 +44,10 @@ final class Setup_Wizard {
 	}
 
 	public static function register_page() {
+		// Null parent slug = hidden submenu (URL-accessible, no menu entry).
+		// This is the documented WP pattern since 4.0; passing '' is undefined.
 		add_submenu_page(
-			'', // No parent — hidden from menus, URL-accessible only.
+			null,
 			__( 'Allscale Checkout — Setup', 'allscale-checkout' ),
 			__( 'Allscale Setup', 'allscale-checkout' ),
 			'manage_woocommerce',
@@ -237,15 +239,16 @@ final class Setup_Wizard {
 				'nonce'   => wp_create_nonce( Admin::NONCE_ACTION ),
 				'action'  => Admin::AJAX_TEST_CONNECTION,
 				'i18n'    => array(
-					'testing'    => __( 'Testing connection…', 'allscale-checkout' ),
-					'notTested'  => __( 'Not tested', 'allscale-checkout' ),
-					'connected'  => __( 'Connected', 'allscale-checkout' ),
-					'testFailed' => __( 'Test failed', 'allscale-checkout' ),
-					'copied'     => __( 'Copied', 'allscale-checkout' ),
-					'copy'       => __( 'Copy', 'allscale-checkout' ),
-					'show'       => __( 'Show', 'allscale-checkout' ),
-					'hide'       => __( 'Hide', 'allscale-checkout' ),
-					'networkErr' => __( "Couldn't reach Allscale — try again in a moment.", 'allscale-checkout' ),
+					'testConnection' => __( 'Test connection', 'allscale-checkout' ),
+					'testing'        => __( 'Testing connection…', 'allscale-checkout' ),
+					'notTested'      => __( 'Not tested', 'allscale-checkout' ),
+					'connected'      => __( 'Connected', 'allscale-checkout' ),
+					'testFailed'     => __( 'Test failed', 'allscale-checkout' ),
+					'copied'         => __( 'Copied', 'allscale-checkout' ),
+					'copy'           => __( 'Copy', 'allscale-checkout' ),
+					'show'           => __( 'Show', 'allscale-checkout' ),
+					'hide'           => __( 'Hide', 'allscale-checkout' ),
+					'networkErr'     => __( "Couldn't reach Allscale — try again in a moment.", 'allscale-checkout' ),
 				),
 			)
 		);
@@ -380,8 +383,12 @@ final class Setup_Wizard {
 		if ( $error ) {
 			delete_transient( self::TRANSIENT_ERROR );
 		}
-		$prev_key    = isset( $_POST['api_key'] ) ? sanitize_text_field( wp_unslash( $_POST['api_key'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
-		$prev_secret = isset( $_POST['api_secret'] ) ? sanitize_text_field( wp_unslash( $_POST['api_secret'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		// On failure we redirect back to step 2 (fresh GET), so $_POST is
+		// always empty by the time we render. The merchant will need to
+		// re-paste — acceptable for v1 since the secret shouldn't survive
+		// in the URL or a transient.
+		$prev_key    = '';
+		$prev_secret = '';
 		?>
 		<h2 class="aw-title"><?php esc_html_e( 'Enter your API credentials', 'allscale-checkout' ); ?></h2>
 		<p class="aw-subtitle">
@@ -567,8 +574,15 @@ final class Setup_Wizard {
 				<?php esc_html_e( 'Place a test order to verify everything works end-to-end, then announce Allscale Checkout to your customers.', 'allscale-checkout' ); ?>
 			</p>
 
+			<?php
+			// Fall back to home_url if the merchant hasn't configured a shop page.
+			$shop_url = wc_get_page_permalink( 'shop' );
+			if ( empty( $shop_url ) ) {
+				$shop_url = home_url( '/' );
+			}
+			?>
 			<div class="aw-actions aw-actions-center">
-				<a class="button button-large aw-btn-brand" href="<?php echo esc_url( wc_get_page_permalink( 'shop' ) ); ?>" target="_blank">
+				<a class="button button-large aw-btn-brand" href="<?php echo esc_url( $shop_url ); ?>" target="_blank">
 					<?php esc_html_e( 'Place a test order →', 'allscale-checkout' ); ?>
 				</a>
 				<form method="post" style="display: inline;">

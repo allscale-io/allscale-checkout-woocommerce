@@ -33,15 +33,24 @@
 		var error = $('[data-as-test-error]', container);
 		var i18n = (window.AllscaleAdmin && window.AllscaleAdmin.i18n) || {};
 
-		btn.disabled = (state === 'loading');
+		if (btn) {
+			btn.disabled = (state === 'loading');
+		}
 
 		// Reset classes.
 		if (pillDot) {
 			pillDot.classList.remove('dot-green', 'dot-yellow', 'dot-red', 'dot-gray', 'dot-blue');
 		}
 
-		// Default button label.
-		var labelEl = btn.querySelector('.as-test-btn-label');
+		var labelEl = btn && btn.querySelector('.as-test-btn-label');
+		// The default button label — captured ONCE at first render so we can
+		// restore it across state changes without hardcoding English.
+		var defaultLabel = (labelEl && labelEl.dataset.defaultLabel)
+			|| (i18n.testConnection || 'Test connection');
+		if (labelEl && !labelEl.dataset.defaultLabel) {
+			labelEl.dataset.defaultLabel = labelEl.textContent || defaultLabel;
+			defaultLabel = labelEl.dataset.defaultLabel;
+		}
 
 		switch (state) {
 			case 'loading':
@@ -51,13 +60,13 @@
 				if (error) { error.hidden = true; }
 				break;
 			case 'success':
-				if (labelEl) { labelEl.textContent = 'Test connection'; }
+				if (labelEl) { labelEl.textContent = defaultLabel; }
 				if (pillDot) { pillDot.classList.add('dot-green'); }
 				if (pillText) { pillText.textContent = i18n.connected || 'Connected'; }
 				if (error) { error.hidden = true; }
 				break;
 			case 'failure':
-				if (labelEl) { labelEl.textContent = 'Test connection'; }
+				if (labelEl) { labelEl.textContent = defaultLabel; }
 				if (pillDot) { pillDot.classList.add('dot-red'); }
 				if (pillText) { pillText.textContent = message || i18n.testFailed || 'Test failed'; }
 				if (error) {
@@ -67,7 +76,7 @@
 				break;
 			case 'idle':
 			default:
-				if (labelEl) { labelEl.textContent = 'Test connection'; }
+				if (labelEl) { labelEl.textContent = defaultLabel; }
 				if (pillDot) { pillDot.classList.add('dot-gray'); }
 				if (pillText) { pillText.textContent = i18n.notTested || 'Not tested'; }
 				if (error) { error.hidden = true; }

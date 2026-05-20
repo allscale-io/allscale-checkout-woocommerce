@@ -42,7 +42,10 @@ final class Settings_Validator {
 		$new_secret = isset( $settings['api_secret'] ) ? trim( (string) $settings['api_secret'] ) : '';
 
 		// Skip validation if credentials are empty (merchant is clearing them).
+		// Also clear the cached "last ping OK" timestamp so the Connection pill
+		// resets to "Not tested" instead of stale-claiming a previous success.
 		if ( $new_key === '' && $new_secret === '' ) {
+			delete_option( Plugin::OPT_LAST_PING_AT );
 			return $settings;
 		}
 

@@ -25,8 +25,10 @@ delete_option( 'allscale_checkout_wizard_dismissed_at' );
 // Gateway settings array.
 delete_option( 'woocommerce_allscale_checkout_settings' );
 
-// Save notice transient (just in case).
+// Transients (best-effort).
 delete_transient( 'allscale_settings_save_notice' );
+delete_transient( 'allscale_wizard_error' );
+delete_transient( 'allscale_do_activation_redirect' );
 
 // Best-effort: clean up nonce dedupe transients. There's no WP API to bulk
 // delete by prefix, so we leave them to expire naturally.

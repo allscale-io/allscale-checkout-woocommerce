@@ -41,7 +41,8 @@ require_once ALLSCALE_CHECKOUT_PATH . 'includes/class-webhook-handler.php';
 require_once ALLSCALE_CHECKOUT_PATH . 'includes/class-gateway.php';
 require_once ALLSCALE_CHECKOUT_PATH . 'includes/class-settings-validator.php';
 require_once ALLSCALE_CHECKOUT_PATH . 'includes/class-admin.php';
-require_once ALLSCALE_CHECKOUT_PATH . 'includes/class-blocks-integration.php';
+// class-blocks-integration.php is required lazily from Plugin::register_blocks_integration
+// because its class extends a WC-Blocks parent that may not exist when this file loads.
 require_once ALLSCALE_CHECKOUT_PATH . 'includes/class-migrations.php';
 require_once ALLSCALE_CHECKOUT_PATH . 'includes/class-setup-wizard.php';
 require_once ALLSCALE_CHECKOUT_PATH . 'includes/class-plugin.php';

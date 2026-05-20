@@ -6,8 +6,9 @@
  * try to mutate the same order. We wrap every order write inside a lock
  * so notes don't double up and payment_complete isn't attempted twice.
  *
- * Uses WooCommerce 8.6+'s wc_get_order_lock when available, falls back to
- * a transient-based mutex otherwise.
+ * If WooCommerce exposes a public lock primitive (wc_get_order_lock) we
+ * prefer it; otherwise (and currently, in all common WC versions) we use a
+ * transient-based mutex with a short TTL.
  *
  * @package Allscale\Checkout
  */
@@ -37,17 +38,17 @@ final class Order_Locker {
 	public static function with_lock( $order_id, callable $fn, Logger $logger ) {
 		$order_id = (int) $order_id;
 
-		// WC 8.6+ — preferred path.
+		// Forward-compat: if WC ships a public order-lock primitive in future,
+		// prefer it. As of writing no such function exists, so this branch is
+		// inert and the transient mutex below carries the load.
 		if ( function_exists( 'wc_get_order_lock' ) ) {
-			// wc_get_order_lock is documented in WC core; signature: wc_get_order_lock( $order_id, $context = 'process_payment' ).
-			$got = wc_get_order_lock( $order_id, 'allscale_checkout' );
+			wc_get_order_lock( $order_id, 'allscale_checkout' );
 			try {
 				return $fn();
 			} finally {
 				if ( function_exists( 'wc_release_order_lock' ) ) {
 					wc_release_order_lock( $order_id, 'allscale_checkout' );
 				}
-				unset( $got );
 			}
 		}
 

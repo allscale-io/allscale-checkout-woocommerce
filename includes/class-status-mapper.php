@@ -45,8 +45,20 @@ final class Status_Mapper {
 		$status = (int) $status;
 
 		// Don't touch terminally-finished orders.
+		// `cancelled` is included: if an order was auto-cancelled by WC's
+		// "Hold stock" timeout and Allscale later confirms a payment, we don't
+		// want to re-process — stock was already restored, and the merchant
+		// must intervene manually.
 		$current_status = $order->get_status();
-		if ( in_array( $current_status, array( 'completed', 'refunded' ), true ) ) {
+		if ( in_array( $current_status, array( 'completed', 'refunded', 'cancelled' ), true ) ) {
+			$logger->info(
+				'Skipping Allscale status update on terminal order',
+				array(
+					'order_id'       => $order->get_id(),
+					'current_status' => $current_status,
+					'incoming'       => $status,
+				)
+			);
 			return;
 		}
 
@@ -117,6 +129,9 @@ final class Status_Mapper {
 				return;
 
 			case Status_Codes::FAILED:
+				if ( self::guard_paid_order( $order, $status, $logger ) ) {
+					return;
+				}
 				if ( $current_status !== 'failed' ) {
 					$order->update_status(
 						'failed',
@@ -126,6 +141,9 @@ final class Status_Mapper {
 				return;
 
 			case Status_Codes::REJECTED:
+				if ( self::guard_paid_order( $order, $status, $logger ) ) {
+					return;
+				}
 				if ( $current_status !== 'failed' ) {
 					$order->update_status(
 						'failed',
@@ -135,6 +153,9 @@ final class Status_Mapper {
 				return;
 
 			case Status_Codes::UNDERPAID:
+				if ( self::guard_paid_order( $order, $status, $logger ) ) {
+					return;
+				}
 				if ( $current_status !== 'on-hold' ) {
 					$paid_cents = isset( $context['paid_cents'] ) ? (int) $context['paid_cents'] : 0;
 					$order->update_status(
@@ -149,6 +170,9 @@ final class Status_Mapper {
 				return;
 
 			case Status_Codes::CANCELED:
+				if ( self::guard_paid_order( $order, $status, $logger ) ) {
+					return;
+				}
 				if ( $current_status !== 'cancelled' ) {
 					$order->update_status(
 						'cancelled',
@@ -158,6 +182,9 @@ final class Status_Mapper {
 				return;
 
 			case Status_Codes::TIMEOUT:
+				if ( self::guard_paid_order( $order, $status, $logger ) ) {
+					return;
+				}
 				if ( $current_status !== 'cancelled' ) {
 					$order->update_status(
 						'cancelled',
@@ -216,6 +243,33 @@ final class Status_Mapper {
 				)
 				: __( 'Allscale payment confirmed.', 'allscale-checkout' )
 		);
+	}
+
+	/**
+	 * Refuse to transition an already-paid order into a failure state.
+	 *
+	 * Defense against out-of-order webhook delivery: if a CONFIRMED webhook
+	 * landed first and we then receive a stale FAILED/REJECTED/UNDERPAID/CANCELED/
+	 * TIMEOUT webhook, we log and ignore it rather than reverting a paid order.
+	 *
+	 * @param \WC_Order $order  Order.
+	 * @param int       $status Incoming Allscale status.
+	 * @param Logger    $logger Logger.
+	 * @return bool True if the order was paid and the caller should bail.
+	 */
+	private static function guard_paid_order( \WC_Order $order, $status, Logger $logger ) {
+		if ( ! $order->is_paid() ) {
+			return false;
+		}
+		$logger->warning(
+			'Ignoring failure-state webhook for an already-paid order',
+			array(
+				'order_id'         => $order->get_id(),
+				'incoming_status'  => (int) $status,
+				'wc_status'        => $order->get_status(),
+			)
+		);
+		return true;
 	}
 
 	/**

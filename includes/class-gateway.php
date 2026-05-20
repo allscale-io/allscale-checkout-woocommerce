@@ -138,9 +138,13 @@ class Gateway extends \WC_Payment_Gateway {
 		}
 
 		$amount_cents = (int) round( (float) $order->get_total() * 100 );
+		// Allscale's documented minimum is 0.10 USDT. We can't precisely
+		// convert fiat → USDT without a live rate, so this is a sanity floor;
+		// the API will return a specific error for anything that still falls
+		// below the actual minimum after FX conversion.
 		if ( $amount_cents < 10 ) {
 			wc_add_notice(
-				__( 'Order total is below the minimum Allscale payment of 0.10 USDT.', 'allscale-checkout' ),
+				__( 'Order total is too small for Allscale (minimum is 0.10 USDT, or its equivalent in your store currency).', 'allscale-checkout' ),
 				'error'
 			);
 			return array( 'result' => 'failure' );
@@ -250,58 +254,56 @@ class Gateway extends \WC_Payment_Gateway {
 		if ( ! $order instanceof \WC_Order ) {
 			return;
 		}
-		if ( $order->is_paid() ) {
-			return;
-		}
 
-		$intent_id = (string) $order->get_meta( Status_Mapper::META_INTENT_ID );
-		if ( $intent_id === '' ) {
-			// Legacy 0.1.x meta key fallback.
-			$intent_id = (string) $order->get_meta( '_allscale_checkout_intent_id' );
-		}
-		if ( $intent_id === '' ) {
-			return;
-		}
+		// Only run the API fallback if the order isn't already done. Already-paid
+		// orders (webhook landed in time) still get the status block rendered below.
+		if ( ! $order->is_paid() ) {
+			$intent_id = (string) $order->get_meta( Status_Mapper::META_INTENT_ID );
+			if ( $intent_id === '' ) {
+				// Legacy 0.1.x meta key fallback.
+				$intent_id = (string) $order->get_meta( '_allscale_checkout_intent_id' );
+			}
 
-		$logger = new Logger( 'yes' === $this->get_option( 'debug_logging' ) );
-		$api    = new Api_Client( (string) $this->get_option( 'api_key' ), (string) $this->get_option( 'api_secret' ), $logger );
+			if ( $intent_id !== '' ) {
+				$logger = new Logger( 'yes' === $this->get_option( 'debug_logging' ) );
+				$api    = new Api_Client( (string) $this->get_option( 'api_key' ), (string) $this->get_option( 'api_secret' ), $logger );
 
-		$result = $api->get_intent_details( $intent_id );
-		if ( ! $result->success || ! is_array( $result->data ) ) {
-			return;
-		}
+				$result = $api->get_intent_details( $intent_id );
+				if ( $result->success && is_array( $result->data ) ) {
+					$data   = $result->data;
+					$status = isset( $data['status'] ) ? (int) $data['status'] : 0;
+					if ( $status !== 0 ) {
+						$context = array(
+							'tx_hash'             => isset( $data['tx_hash'] ) ? (string) $data['tx_hash'] : '',
+							'paid_cents'          => isset( $data['amount_cents'] ) ? (int) $data['amount_cents'] : 0,
+							'payment_method_type' => isset( $data['payment_method_type'] ) ? (int) $data['payment_method_type'] : null,
+							'chain_id'            => isset( $data['chain_id'] ) ? (int) $data['chain_id'] : null,
+							'coin_symbol'         => isset( $data['coin_symbol'] ) ? (string) $data['coin_symbol'] : '',
+							'amount_coins'        => isset( $data['amount_coins'] ) ? (string) $data['amount_coins'] : '',
+							'actual_paid_amount'  => isset( $data['actual_paid_amount'] ) ? (string) $data['actual_paid_amount'] : '',
+							'service_fee_amount'  => isset( $data['service_fee_amount'] ) ? (string) $data['service_fee_amount'] : '',
+							'net_income_amount'   => isset( $data['net_income_amount'] ) ? (string) $data['net_income_amount'] : '',
+							'source'              => 'return_url',
+						);
 
-		$data   = $result->data;
-		$status = isset( $data['status'] ) ? (int) $data['status'] : 0;
-		if ( $status === 0 ) {
-			return;
-		}
-
-		$context = array(
-			'tx_hash'             => isset( $data['tx_hash'] ) ? (string) $data['tx_hash'] : '',
-			'paid_cents'          => isset( $data['amount_cents'] ) ? (int) $data['amount_cents'] : 0,
-			'payment_method_type' => isset( $data['payment_method_type'] ) ? (int) $data['payment_method_type'] : null,
-			'chain_id'            => isset( $data['chain_id'] ) ? (int) $data['chain_id'] : null,
-			'coin_symbol'         => isset( $data['coin_symbol'] ) ? (string) $data['coin_symbol'] : '',
-			'amount_coins'        => isset( $data['amount_coins'] ) ? (string) $data['amount_coins'] : '',
-			'actual_paid_amount'  => isset( $data['actual_paid_amount'] ) ? (string) $data['actual_paid_amount'] : '',
-			'service_fee_amount'  => isset( $data['service_fee_amount'] ) ? (string) $data['service_fee_amount'] : '',
-			'net_income_amount'   => isset( $data['net_income_amount'] ) ? (string) $data['net_income_amount'] : '',
-			'source'              => 'return_url',
-		);
-
-		Order_Locker::with_lock(
-			$order->get_id(),
-			function () use ( $order, $status, $context, $logger ) {
-				$fresh = wc_get_order( $order->get_id() );
-				if ( $fresh ) {
-					Status_Mapper::apply( $fresh, $status, $context, $logger );
+						Order_Locker::with_lock(
+							$order->get_id(),
+							function () use ( $order, $status, $context, $logger ) {
+								$fresh = wc_get_order( $order->get_id() );
+								if ( $fresh ) {
+									Status_Mapper::apply( $fresh, $status, $context, $logger );
+								}
+							},
+							$logger
+						);
+					}
 				}
-			},
-			$logger
-		);
+			}
+		}
 
-		// Render the customer-facing status block.
+		// Always render the customer-facing status block, even when the order
+		// was already paid via webhook or the API call failed. We render from
+		// local order state so the customer always sees a clear confirmation.
 		$fresh = wc_get_order( $order_id );
 		if ( $fresh ) {
 			self::render_thankyou_block( $fresh );
@@ -381,16 +383,38 @@ class Gateway extends \WC_Payment_Gateway {
 		</div>
 		<?php
 
-		// If pending, refresh every 10 seconds for up to 5 minutes.
+		// If pending, refresh every 10 seconds for up to 5 minutes TOTAL across
+		// reloads. We persist the original start time in sessionStorage so the
+		// 5-minute cap actually holds (not "5 minutes per reload").
 		if ( $tone === 'pending' ) {
+			$intent_id = (string) $order->get_meta( Status_Mapper::META_INTENT_ID );
+			$session_key = 'allscale_thankyou_started_' . md5( $intent_id !== '' ? $intent_id : (string) $order->get_id() );
 			?>
 			<script>
 			(function(){
-				var maxMs = 5 * 60 * 1000, intervalMs = 10000, elapsed = 0;
-				var t = setInterval(function(){
-					elapsed += intervalMs;
-					if (elapsed >= maxMs) { clearInterval(t); return; }
-					window.location.reload();
+				var key = <?php echo wp_json_encode( $session_key ); ?>;
+				var maxMs = 5 * 60 * 1000;       // 5 minutes total polling window
+				var intervalMs = 10000;          // poll every 10 seconds
+
+				var started;
+				try {
+					started = parseInt(window.sessionStorage.getItem(key), 10);
+					if (!started || isNaN(started)) {
+						started = Date.now();
+						window.sessionStorage.setItem(key, String(started));
+					}
+				} catch (_) {
+					started = Date.now();
+				}
+
+				if (Date.now() - started >= maxMs) {
+					return; // hit the cap — stop reloading
+				}
+
+				setTimeout(function(){
+					if (Date.now() - started < maxMs) {
+						window.location.reload();
+					}
 				}, intervalMs);
 			})();
 			</script>

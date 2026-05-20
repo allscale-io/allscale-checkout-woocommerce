@@ -105,6 +105,11 @@ final class Plugin {
 		if ( ! class_exists( '\Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType' ) ) {
 			return;
 		}
+		// Lazy-load so the class declaration (which extends a WC-Blocks parent)
+		// only runs after we know that parent class is available — avoids a
+		// fatal-error race when this plugin loads before WC.
+		require_once ALLSCALE_CHECKOUT_PATH . 'includes/class-blocks-integration.php';
+
 		add_action(
 			'woocommerce_blocks_payment_method_type_registration',
 			static function ( $registry ) {
