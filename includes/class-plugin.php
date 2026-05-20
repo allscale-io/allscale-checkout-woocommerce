@@ -75,6 +75,7 @@ final class Plugin {
 
 		if ( is_admin() ) {
 			Admin::register();
+			Setup_Wizard::register();
 		}
 
 		Migrations::maybe_run();

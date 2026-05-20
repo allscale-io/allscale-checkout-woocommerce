@@ -38,11 +38,18 @@ final class Admin {
 
 	public static function plugin_action_links( $links ) {
 		$settings_url = admin_url( 'admin.php?page=wc-settings&tab=checkout&section=' . Gateway::ID );
-		array_unshift(
-			$links,
-			'<a href="' . esc_url( $settings_url ) . '">' . esc_html__( 'Settings', 'allscale-checkout' ) . '</a>'
+		$wizard_url   = Setup_Wizard::url( 1 );
+		$opts         = Plugin::settings();
+		$has_creds    = ! empty( $opts['api_key'] ) && ! empty( $opts['api_secret'] );
+
+		$new = array(
+			'settings' => '<a href="' . esc_url( $settings_url ) . '">' . esc_html__( 'Settings', 'allscale-checkout' ) . '</a>',
 		);
-		return $links;
+		// Surface the wizard prominently until credentials are configured.
+		if ( ! $has_creds ) {
+			$new['wizard'] = '<a href="' . esc_url( $wizard_url ) . '" style="font-weight: 600;">' . esc_html__( 'Setup wizard', 'allscale-checkout' ) . '</a>';
+		}
+		return array_merge( $new, $links );
 	}
 
 	// ----------------------------------------------------------------------
@@ -462,6 +469,12 @@ final class Admin {
 				<li><span class="as-step-bullet">2</span><?php esc_html_e( 'Test the connection', 'allscale-checkout' ); ?></li>
 				<li><span class="as-step-bullet">3</span><?php esc_html_e( 'Paste your webhook URL into your Allscale dashboard', 'allscale-checkout' ); ?></li>
 			</ol>
+			<div class="as-welcome-cta">
+				<a class="button button-primary" href="<?php echo esc_url( Setup_Wizard::url( 1 ) ); ?>">
+					<?php esc_html_e( 'Run guided setup →', 'allscale-checkout' ); ?>
+				</a>
+				<span class="as-welcome-cta-sub"><?php esc_html_e( '…or configure manually below.', 'allscale-checkout' ); ?></span>
+			</div>
 		</div>
 		<?php
 	}

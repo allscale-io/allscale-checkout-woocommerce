@@ -43,6 +43,7 @@ require_once ALLSCALE_CHECKOUT_PATH . 'includes/class-settings-validator.php';
 require_once ALLSCALE_CHECKOUT_PATH . 'includes/class-admin.php';
 require_once ALLSCALE_CHECKOUT_PATH . 'includes/class-blocks-integration.php';
 require_once ALLSCALE_CHECKOUT_PATH . 'includes/class-migrations.php';
+require_once ALLSCALE_CHECKOUT_PATH . 'includes/class-setup-wizard.php';
 require_once ALLSCALE_CHECKOUT_PATH . 'includes/class-plugin.php';
 
 add_action(
@@ -51,3 +52,6 @@ add_action(
 		\Allscale\Checkout\Plugin::instance()->boot();
 	}
 );
+
+// Activation hook — flag a one-time redirect to the setup wizard.
+register_activation_hook( __FILE__, array( '\Allscale\Checkout\Setup_Wizard', 'on_activation' ) );

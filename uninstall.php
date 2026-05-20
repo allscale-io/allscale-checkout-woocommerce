@@ -19,6 +19,8 @@ delete_option( 'allscale_checkout_first_webhook_at' );
 delete_option( 'allscale_checkout_first_webhook_dismissed' );
 delete_option( 'allscale_checkout_last_ping_at' );
 delete_option( 'allscale_checkout_show_sandbox_notice' );
+delete_option( 'allscale_checkout_wizard_completed_at' );
+delete_option( 'allscale_checkout_wizard_dismissed_at' );
 
 // Gateway settings array.
 delete_option( 'woocommerce_allscale_checkout_settings' );

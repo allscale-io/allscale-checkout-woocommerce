@@ -482,3 +482,398 @@
 	text-decoration: none;
 }
 .allscale-metabox .meta-link:hover { text-decoration: underline; color: var(--wp-link-h); }
+
+/* =========================================================================
+   Welcome banner CTA (links wizard prominently from settings empty state)
+   ========================================================================= */
+.allscale-admin .as-welcome-cta {
+	margin-top: 16px;
+	display: flex;
+	gap: 12px;
+	align-items: center;
+	flex-wrap: wrap;
+	position: relative;
+}
+.allscale-admin .as-welcome-cta-sub {
+	font-size: 12.5px;
+	color: var(--wp-text2);
+}
+
+/* =========================================================================
+   Setup Wizard
+   =========================================================================
+   The wizard lives at admin.php?page=allscale-checkout-setup and reuses the
+   shared form/test-connection/copy/secret-toggle JS from admin.js. Body has
+   the `allscale-wizard-page` class so we can soften the WP admin chrome.
+   ========================================================================= */
+
+/* Tone down WP admin chrome on the wizard page. */
+body.allscale-wizard-page #wpcontent {
+	padding-left: 20px;
+}
+body.allscale-wizard-page #wpbody-content {
+	padding-bottom: 40px;
+}
+body.allscale-wizard-page .update-nag,
+body.allscale-wizard-page .notice:not(.notice-error) {
+	display: none;
+}
+
+.allscale-wizard {
+	--wp-bg:        #f0f0f1;
+	--wp-card:      #ffffff;
+	--wp-text:      #1d2327;
+	--wp-text2:     #50575e;
+	--wp-text3:     #787c82;
+	--wp-border:    #c3c4c7;
+	--wp-border2:   #dcdcde;
+	--wp-link:      #2271b1;
+	--wp-blue:      #2271b1;
+
+	--n-error:      #d63638;
+	--brand:        #0f9b8e;
+	--brand-h:      #0c857a;
+	--brand-l:      #e6f6f4;
+
+	--font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+	background: linear-gradient(180deg, #f3f4f6 0%, #f8f9fa 100%);
+	min-height: calc(100vh - 32px);
+	margin: -10px -20px -40px -20px;
+	padding: 28px 28px 64px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	font-size: 14px;
+	color: var(--wp-text);
+}
+.allscale-wizard * { box-sizing: border-box; }
+
+/* Header */
+.allscale-wizard .aw-header {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	width: 100%;
+	max-width: 720px;
+	margin-bottom: 4px;
+}
+.allscale-wizard .aw-logo {
+	height: 26px;
+	width: auto;
+	display: block;
+}
+.allscale-wizard .aw-skip {
+	margin-left: auto;
+	font-size: 13px;
+	color: var(--wp-text2);
+	text-decoration: none;
+}
+.allscale-wizard .aw-skip:hover {
+	color: var(--wp-text);
+	text-decoration: underline;
+}
+
+/* Progress bar */
+.allscale-wizard .aw-progress {
+	width: 100%;
+	max-width: 720px;
+	margin-top: 18px;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+.allscale-wizard .aw-progress-step {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+	flex: 0 0 auto;
+}
+.allscale-wizard .aw-progress-bubble {
+	width: 26px;
+	height: 26px;
+	border-radius: 50%;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 12px;
+	font-weight: 700;
+	background: #fff;
+	color: var(--wp-text3);
+	border: 1.5px solid var(--wp-border);
+	transition: all .2s;
+}
+.allscale-wizard .aw-progress-active .aw-progress-bubble {
+	background: var(--wp-blue);
+	border-color: var(--wp-blue);
+	color: #fff;
+}
+.allscale-wizard .aw-progress-done .aw-progress-bubble {
+	background: var(--brand);
+	border-color: var(--brand);
+	color: #fff;
+}
+.allscale-wizard .aw-progress-label {
+	font-size: 13px;
+	color: var(--wp-text3);
+	font-weight: 500;
+	white-space: nowrap;
+}
+.allscale-wizard .aw-progress-active .aw-progress-label {
+	color: var(--wp-text);
+	font-weight: 600;
+}
+.allscale-wizard .aw-progress-done .aw-progress-label {
+	color: var(--wp-text2);
+}
+.allscale-wizard .aw-progress-line {
+	flex: 1;
+	height: 2px;
+	background: var(--wp-border2);
+	border-radius: 1px;
+	min-width: 16px;
+	transition: background .2s;
+}
+.allscale-wizard .aw-progress-line-done {
+	background: var(--brand);
+}
+
+/* Card */
+.allscale-wizard .aw-card {
+	background: #fff;
+	border: 1px solid var(--wp-border);
+	border-radius: 8px;
+	padding: 36px 40px;
+	margin-top: 24px;
+	width: 100%;
+	max-width: 640px;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.allscale-wizard .aw-step-count {
+	margin-top: 14px;
+	font-size: 12px;
+	color: var(--wp-text3);
+}
+
+/* Card content */
+.allscale-wizard .aw-title {
+	margin: 0;
+	font-size: 24px;
+	font-weight: 600;
+	color: var(--wp-text);
+	letter-spacing: -0.01em;
+	line-height: 1.2;
+}
+.allscale-wizard .aw-title-large {
+	font-size: 26px;
+}
+.allscale-wizard .aw-subtitle {
+	font-size: 14px;
+	color: var(--wp-text2);
+	margin: 6px 0 22px;
+	line-height: 1.5;
+}
+
+/* Step 1 shield + checklist */
+.allscale-wizard .aw-shield {
+	background: var(--brand-l);
+	border-radius: 6px;
+	padding: 16px 18px;
+	margin-bottom: 18px;
+	display: flex;
+	align-items: flex-start;
+	gap: 14px;
+	color: var(--brand);
+}
+.allscale-wizard .aw-shield > div {
+	color: var(--wp-text);
+	font-size: 13.5px;
+	line-height: 1.5;
+}
+.allscale-wizard .aw-checklist-heading {
+	font-size: 13px;
+	color: var(--wp-text2);
+	margin-bottom: 8px;
+}
+.allscale-wizard .aw-checklist {
+	margin: 0 0 0;
+	padding: 0;
+	list-style: none;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+.allscale-wizard .aw-checklist li {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	font-size: 14px;
+	color: var(--wp-text);
+}
+.allscale-wizard .aw-checklist .aw-check {
+	width: 22px;
+	height: 22px;
+	border-radius: 50%;
+	background: var(--wp-border2);
+	color: var(--wp-text2);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 12px;
+	flex: 0 0 auto;
+}
+
+/* Step 2 form */
+.allscale-wizard .aw-form {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+.allscale-wizard .aw-field label {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--wp-text);
+	display: block;
+	margin-bottom: 6px;
+}
+.allscale-wizard .aw-field input[type="text"],
+.allscale-wizard .aw-field input[type="password"] {
+	width: 100%;
+	max-width: 100%;
+}
+.allscale-wizard .aw-hint {
+	font-size: 12.5px;
+	color: var(--wp-text2);
+	margin: 8px 0 0;
+	line-height: 1.4;
+}
+
+.allscale-wizard .aw-error {
+	background: #fcf0f1;
+	border-left: 3px solid var(--n-error);
+	border-radius: 2px;
+	padding: 10px 12px;
+	font-size: 13px;
+	color: var(--wp-text);
+	margin-bottom: 18px;
+	line-height: 1.45;
+}
+
+/* Step 3 webhook block + instructions */
+.allscale-wizard .aw-webhook-block {
+	background: var(--brand-l);
+	border-radius: 6px;
+	padding: 16px;
+	margin-bottom: 22px;
+}
+.allscale-wizard .aw-webhook-label {
+	font-size: 12.5px;
+	color: var(--wp-text2);
+	font-weight: 600;
+	margin-bottom: 8px;
+}
+.allscale-wizard .aw-instructions {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+.allscale-wizard .aw-instructions li {
+	display: flex;
+	gap: 12px;
+	align-items: flex-start;
+	font-size: 14px;
+	color: var(--wp-text);
+	line-height: 1.45;
+}
+.allscale-wizard .aw-num {
+	flex: 0 0 auto;
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	background: var(--brand);
+	color: #fff;
+	font-size: 12px;
+	font-weight: 700;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+
+/* Step 4 done */
+.allscale-wizard .aw-done {
+	text-align: center;
+}
+.allscale-wizard .aw-done-burst {
+	width: 72px;
+	height: 72px;
+	border-radius: 50%;
+	background: var(--brand-l);
+	color: var(--brand);
+	margin: 0 auto 18px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+.allscale-wizard .aw-done .aw-subtitle {
+	max-width: 440px;
+	margin: 8px auto 0;
+}
+
+/* Actions row */
+.allscale-wizard .aw-actions {
+	margin-top: 28px;
+	padding-top: 20px;
+	border-top: 1px solid var(--wp-border2);
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+}
+.allscale-wizard .aw-actions-center {
+	justify-content: center;
+	flex-wrap: wrap;
+}
+.allscale-wizard .aw-back {
+	font-size: 13px;
+	color: var(--wp-link);
+	text-decoration: none;
+}
+.allscale-wizard .aw-back:hover { text-decoration: underline; }
+
+/* Brand-tinted primary button — used only on wizard CTAs */
+.allscale-wizard .aw-btn-brand,
+.allscale-wizard .aw-btn-brand.button-primary {
+	background: var(--brand) !important;
+	border-color: var(--brand) !important;
+	color: #fff !important;
+	box-shadow: none !important;
+	text-shadow: none !important;
+}
+.allscale-wizard .aw-btn-brand:hover,
+.allscale-wizard .aw-btn-brand.button-primary:hover {
+	background: var(--brand-h) !important;
+	border-color: var(--brand-h) !important;
+}
+
+/* Mobile */
+@media (max-width: 782px) {
+	.allscale-wizard {
+		padding: 16px;
+		margin: -10px -10px -40px -10px;
+	}
+	.allscale-wizard .aw-card {
+		padding: 24px 20px;
+	}
+	.allscale-wizard .aw-progress {
+		flex-wrap: wrap;
+		gap: 6px;
+	}
+	.allscale-wizard .aw-progress-line {
+		display: none;
+	}
+}
