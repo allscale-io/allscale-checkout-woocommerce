@@ -235,10 +235,6 @@ Allscale supports 9 fiat currencies: USD, EUR, GBP, CAD, AUD, JPY, CNY, SGD, HKD
 - Change your WooCommerce store currency in *Settings → General*, or
 - Enable **Use native USDT pricing** in the plugin's Payment configuration section — prices are sent to Allscale as USDT directly (no FX conversion). Your displayed prices stay in your store currency but represent USDT amounts (e.g. "5.00" means 5 USDT).
 
-### "Plugin took down my site on activation"
-
-You're running an older build that had a class-loading bug. The plugin's `Gateway` class extends `WC_Payment_Gateway`, and an earlier version required the class file eagerly — which fatal'd if WordPress loaded this plugin before WooCommerce alphabetically. v0.0.1 onward lazy-loads the gateway class so this can't happen. Update to the latest release from [GitHub releases](https://github.com/allscale-io/allscale-checkout-woocommerce/releases).
-
 ### Reading the logs
 
 When **Debug logging** is enabled, the plugin writes to WooCommerce's logger under source `allscale-checkout`. Read them at *WooCommerce → Status → Logs* (select the `allscale-checkout` source from the dropdown). Logged events include:
