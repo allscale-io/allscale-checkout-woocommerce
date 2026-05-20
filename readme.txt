@@ -1,18 +1,18 @@
-=== Allscale Checkout for WooCommerce ===
+=== Allscale Checkout for WordPress ===
 Contributors: allscale
 Tags: woocommerce, payment gateway, crypto, usdt, stablecoin, non-custodial
 Requires at least: 5.8
 Tested up to: 6.5
-Stable tag: 0.0.2
+Stable tag: 0.0.3
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Accept crypto payments in WooCommerce with a 0.6% fee (minimum $0.10) and instant USDT settlement to your own wallet. Non-custodial.
+Accept crypto payments on WordPress with a 0.6% fee (minimum $0.10) and instant USDT settlement to your own wallet. Non-custodial. Requires WooCommerce.
 
 == Description ==
 
-Allscale Checkout is a WooCommerce payment gateway that lets your customers pay with crypto while funds settle instantly as USDT stablecoin directly to your wallet — Allscale never holds your money.
+Allscale Checkout is a WordPress plugin (built as a WooCommerce payment gateway) that lets your customers pay with crypto while funds settle instantly as USDT stablecoin directly to your wallet — Allscale never holds your money.
 
 = Why use Allscale? =
 
@@ -66,6 +66,10 @@ No. Allscale is non-custodial; funds settle directly to your wallet. To refund a
 USD, AUD, CAD, CNY, EUR, GBP, HKD, JPY, SGD. You can also enable **native USDT pricing** for crypto-first stores.
 
 == Changelog ==
+
+= 0.0.3 =
+* **Renamed**: plugin headline framing changed from "for WooCommerce" to "for WordPress". The plugin still requires WooCommerce (and still ships as a WC payment gateway under the hood) — that's now positioned as a dependency rather than the marketing headline. Class names, namespaces, option keys, hook names, and the text domain are unchanged.
+* GitHub repository renamed from `allscale-checkout-woocommerce` to `allscale-wordpress-plugin`. Old URLs continue to redirect via GitHub's rename mechanism.
 
 = 0.0.2 =
 * Remove `Api_Client::get_intent_status()` — dead code, never called (the return-URL fallback uses `get_intent_details` for full fields). Restore in 5 lines if a future polling path needs it.

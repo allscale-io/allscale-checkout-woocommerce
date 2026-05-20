@@ -1,6 +1,6 @@
-# Allscale Checkout for WooCommerce
+# Allscale Checkout for WordPress
 
-A WordPress / WooCommerce payment gateway that lets merchants accept crypto payments via [Allscale Checkout](https://allscale.io). Customers pay with a crypto wallet or their Allscale account; merchants receive **USDT stablecoin** directly to their own on-chain wallet. Funds settle in seconds and are never held by a third party.
+A WordPress plugin (built as a WooCommerce payment gateway) that lets merchants accept crypto payments via [Allscale Checkout](https://allscale.io). Customers pay with a crypto wallet or their Allscale account; merchants receive **USDT stablecoin** directly to their own on-chain wallet. Funds settle in seconds and are never held by a third party.
 
 **What is Allscale?** Allscale is a self-custody crypto payment processor. It hosts the checkout page where buyers pay, validates payments on-chain, and settles to the merchant's wallet. The merchant's API key + secret are scoped to a single Allscale "store" — Allscale itself never custodies funds.
 
@@ -133,7 +133,7 @@ Once WooCommerce is active, the notice disappears and the plugin proceeds normal
 
 ## Installation
 
-1. Download the latest release ZIP from [GitHub releases](https://github.com/allscale-io/allscale-checkout-woocommerce/releases) (or `archive/refs/heads/main.zip` for the current dev tip).
+1. Download the latest release ZIP from [GitHub releases](https://github.com/allscale-io/allscale-wordpress-plugin/releases) (or `archive/refs/heads/main.zip` for the current dev tip).
 2. In your WordPress admin, go to **Plugins → Add New → Upload Plugin**, choose the ZIP, click **Install Now**, then **Activate**.
 3. If WooCommerce isn't already installed and active, the notice above will guide you through that step first.
 4. After activation, the plugin redirects you to a 4-step setup wizard. If you skip it, you can configure manually under **WooCommerce → Settings → Payments → Allscale Checkout**.
@@ -261,7 +261,7 @@ When **Debug logging** is enabled, the plugin writes to WooCommerce's logger und
 
 Until we're on the WordPress.org plugin directory, updates are manual:
 
-1. Download the new release ZIP from [GitHub releases](https://github.com/allscale-io/allscale-checkout-woocommerce/releases).
+1. Download the new release ZIP from [GitHub releases](https://github.com/allscale-io/allscale-wordpress-plugin/releases).
 2. Replace the existing plugin folder, or use a tool like *WP-CLI* (`wp plugin install /path/to/new.zip --force`) or the *Easy Theme and Plugin Upgrades* plugin.
 
 Your settings, credentials, and order meta are preserved across upgrades. The plugin runs idempotent migrations on each activation/upgrade — if you're coming from the legacy 0.1.x community beta, the first request after upgrade clears the obsolete `environment` setting and queues a one-time notice explaining sandbox retirement.
@@ -289,8 +289,8 @@ For the UI specification driving the admin design (settings page, meta box, noti
 ## Development
 
 ```bash
-git clone https://github.com/allscale-io/allscale-checkout-woocommerce.git
-cd allscale-checkout-woocommerce
+git clone https://github.com/allscale-io/allscale-wordpress-plugin.git
+cd allscale-wordpress-plugin
 
 # For local development, symlink into your WP plugins directory:
 ln -s "$(pwd)" /path/to/wordpress/wp-content/plugins/allscale-checkout
@@ -338,4 +338,4 @@ GPLv2 or later — see [LICENSE](LICENSE) for details.
 - [Allscale API documentation](https://docs.allscale.io/allscale-checkout/getting-started)
 - [Allscale Checkout integration guide](https://github.com/allscale-io/allscale-checkout-skill) (for AI coding agents)
 - [WooCommerce Payment Gateway API](https://woocommerce.com/document/payment-gateway-api/)
-- [GitHub repo](https://github.com/allscale-io/allscale-checkout-woocommerce)
+- [GitHub repo](https://github.com/allscale-io/allscale-wordpress-plugin)

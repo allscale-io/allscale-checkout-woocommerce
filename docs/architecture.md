@@ -1,4 +1,4 @@
-# Allscale Checkout for WooCommerce — v0.0.x Rebuild Architecture
+# Allscale Checkout for WordPress — v0.0.x Rebuild Architecture
 
 This document describes the architecture for the v0.0.x pre-release rebuild of the plugin (deliberately labeled v0 — not yet production-stable). It captures (a) what changed in the underlying Allscale Checkout API since the 0.1.x plugin was written, (b) how the rebuild is structured, (c) how each known issue in 0.1.x is resolved, and (d) what is in and out of scope.
 
@@ -313,7 +313,7 @@ The wizard reuses `Admin`'s `/v1/test/ping` AJAX endpoint and its shared `admin.
 ## 5. File layout
 
 ```
-allscale-checkout-woocommerce/
+allscale-wordpress-plugin/
 ├── allscale-checkout.php                  # Main plugin file: headers, constants, Plugin::boot()
 ├── readme.txt                             # WordPress.org standard format (future submission)
 ├── README.md                              # GitHub-facing docs

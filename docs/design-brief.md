@@ -1,4 +1,4 @@
-# Allscale Checkout for WooCommerce — UI Design Brief
+# Allscale Checkout for WordPress — UI Design Brief
 
 > A handoff document for a designer (Claude Design or human). Describes every visible surface of the rebuilt plugin, the states each surface can be in, the copy, the responsive behavior, and the WordPress / WooCommerce conventions that must be respected.
 
@@ -75,7 +75,7 @@ P0 surfaces below are described in detail. P1 are sketched at the end.
 **Purpose.** The standard WP plugin row, with a "Settings" action link.
 
 **Layout.** This is rendered by WordPress core. We control:
-- **Plugin name** (header): `Allscale Checkout for WooCommerce`
+- **Plugin name** (header): `Allscale Checkout for WordPress`
 - **Description** (1-2 sentences below name): `Accept crypto payments with 0.6% fees (min $0.10) and instant USDT settlement to your own wallet. Non-custodial — your funds are never held by a third party. Requires a free Allscale account.`
 - **Action links** (left side, before Activate/Deactivate): `Settings | Deactivate`
 - **Meta line** (right side): `Version 0.0.1 | By Allscale community | View details | Visit plugin site`
