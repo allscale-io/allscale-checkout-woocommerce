@@ -1,8 +1,21 @@
 # Allscale Checkout for WooCommerce — v0.0.x Rebuild Architecture
 
-This document describes the architecture for the v0.0.x pre-release rebuild of the plugin (deliberately labeled v0 — not yet production-stable). It captures (a) what changed in the underlying Allscale Checkout API since the 0.1.x plugin was written, (b) how the rebuild is structured, (c) how each known issue in 0.1.x is resolved, and (d) what is in and out of scope for v1.
+This document describes the architecture for the v0.0.x pre-release rebuild of the plugin (deliberately labeled v0 — not yet production-stable). It captures (a) what changed in the underlying Allscale Checkout API since the 0.1.x plugin was written, (b) how the rebuild is structured, (c) how each known issue in 0.1.x is resolved, and (d) what is in and out of scope.
 
 For the UI specification that pairs with this architecture, see [`design-brief.md`](./design-brief.md).
+
+---
+
+## Quick orientation
+
+If you're reading this cold (AI agent or new contributor), here's where to start based on what you want to do:
+
+- **Understand the codebase end-to-end** → read §4 (module-by-module design) and §5 (file layout). Each class is single-purpose and described in its own subsection.
+- **Trace a real request** — payment intent creation → §4.10 (Gateway), webhook delivery → §4.9 (Webhook_Handler), customer return-URL → §4.10 again. Both write paths converge on §4.7 (Status_Mapper) under §4.8 (Order_Locker).
+- **Extend the plugin** — see the README's "Extending the plugin" section for the public filter / action hooks and the canonical order meta keys.
+- **Understand a design choice** — §1 (API spec deltas vs 0.1.x), §2 (what stayed the same), §3 (known-issue resolutions), §7 (scope decisions).
+- **Adding a new Allscale status, chain, currency, or status-to-WC mapping** — `Status_Codes`, `Admin::chain_name` / `Admin::explorer_url`, `Currency::$map`, `Status_Mapper::apply` respectively.
+- **Working on the UI** — see [`design-brief.md`](./design-brief.md) for the visual spec and copy strings; CSS lives in `assets/css/admin.css` scoped under `.allscale-admin` / `.allscale-metabox` / `.allscale-wizard`.
 
 ---
 
@@ -23,8 +36,8 @@ The plugin was originally written against an older spec. The current canonical s
 | **`/v1/test/ping`** | Not used | Used to validate credentials at save time and via a "Test connection" button |
 | **Webhook `webhook_id`** | Not validated | Webhook payload includes a `webhook_id` field that must equal the `X-Webhook-Id` header |
 | **Webhook `payment_method_type`** | Not stored | New field on the webhook payload — should be persisted to order meta |
-| **`accepted_stable_coins`** | Not supported | Optional intent field (list of stable-coin enums the merchant accepts). v1 sends a single value implicitly; forward-compat only |
-| **Response signing** | Not supported | Optional per-store feature. v1 does not implement; stubbed for future |
+| **`accepted_stable_coins`** | Not supported | Optional intent field (list of stable-coin enums the merchant accepts). the current code sends a single value implicitly; forward-compat only |
+| **Response signing** | Not supported | Optional per-store feature. this release does not implement it; the interface is stubbed for future |
 | **Minimum payment** | Not enforced client-side | 0.1 USDT minimum — pre-check before creating intent |
 
 **Hidden bug surfaced by this analysis.** The 0.1.x `check_payment_on_return()` calls `GET /v1/checkout_intents/{id}/status` and expects an object with `status`, `tx_hash`, `amount_cents`. The endpoint actually returns a bare integer. The return-URL fallback has therefore never worked correctly in 0.1.x.
@@ -38,15 +51,15 @@ The plugin was originally written against an older spec. The current canonical s
 - Currency enum values for the 9 supported fiats (USD=1, AUD=9, CAD=27, CNY=31, EUR=44, GBP=48, HKD=57, JPY=72, SGD=126).
 - HPOS compatibility and block-based checkout compatibility declarations.
 - The webhook URL pattern: `https://yoursite.com/wc-api/allscale_checkout`.
-- Webhook URLs cannot be registered programmatically — the merchant pastes them into the Allscale dashboard manually. The v1 design accepts this constraint (see [`design-brief.md`](./design-brief.md) §1).
+- Webhook URLs cannot be registered programmatically — the merchant pastes them into the Allscale dashboard manually. The design accepts this constraint (see [`design-brief.md`](./design-brief.md) §1).
 
 ---
 
-## 3. Known issues in 0.1.x and how v1 resolves each
+## 3. Known issues in 0.1.x and how the rewrite resolves each
 
 Catalogued during the initial 0.1.x review (2026-05-20).
 
-| # | Issue (0.1.x) | v1 resolution |
+| # | Issue (0.1.x) | Resolution |
 |---|---|---|
 | 1 | **Webhook handler registered only inside `Allscale_Gateway::__construct()`** — registration depends on the gateway being instantiated, which happens via the `woocommerce_payment_gateways` filter. Order-of-operations fragility. | `Plugin::boot()` registers the webhook handler unconditionally on the `init` hook. The handler reads `api_secret` from options at request time (not constructor), supporting credential rotation. |
 | 2 | **`substr($description, 0, 197)` byte-truncates UTF-8** — Chinese / Japanese / emoji product names get sliced mid-character and produce malformed UTF-8 in the API payload. | `mb_strimwidth($description, 0, 200, '…', 'UTF-8')`. |
@@ -55,7 +68,7 @@ Catalogued during the initial 0.1.x review (2026-05-20).
 | 5 | **No logging anywhere.** | A single `Logger` wrapper around `wc_get_logger()` with source `'allscale-checkout'` is threaded through the API client (logs request_id, status code, latency), webhook handler (logs validation failures with redacted headers), and status mapper (logs transitions). A "Debug logging" toggle in settings increases verbosity. |
 | 6 | **No i18n** — all strings hardcoded English, no `Text Domain` header. | Text domain `allscale-checkout` declared in the plugin header, set with `load_plugin_textdomain` on `plugins_loaded`. All user-facing strings wrapped in `__()` / `esc_html__()` / `_e()`. A `.pot` template is generated under `languages/`. |
 | 7 | **Currency limited to 9 fiats; no admin signal when unsupported.** | The skill still defines only 9 supported fiats, so we keep parity. Added: an admin notice (and an inline notice on the settings page) when the store currency is unsupported, and an optional "native USDT pricing" toggle for crypto-first stores using `stable_coin`. |
-| 8 | **Block checkout integration is minimal** (renders label + description only). | Carried forward as-is in v1. Out of scope; tracked for v1.1. |
+| 8 | **Block checkout integration is minimal** (renders label + description only). | Carried forward as-is. Out of scope; revisit in a future release. |
 | 9 | **README ZIP download link uses GitHub-relative path** (breaks outside github.com). | Replaced with an absolute URL. |
 | 10 | **`wc_get_orders` meta lookup** is slow at scale on legacy CPT storage. | HPOS is the documented requirement; lookup remains as-is, documented in code. |
 
@@ -69,13 +82,16 @@ A singleton entry point. The main file `allscale-checkout.php` defines the plugi
 
 `boot()` is the one place that wires the plugin to WordPress:
 
-1. Load text domain.
+1. Load text domain on `init` priority 1.
 2. Declare HPOS compatibility and `cart_checkout_blocks` compatibility on `before_woocommerce_init`.
-3. Instantiate the singleton `Logger`.
-4. Instantiate and register `Webhook_Handler` on the `init` hook **unconditionally** — does not depend on the gateway constructor running. This is the fix for issue 1.
-5. Register the gateway via `woocommerce_payment_gateways` filter on `plugins_loaded`.
-6. Start `Admin` if `is_admin()`.
-7. Run `Migrations::maybe_run()` to handle 0.1.x → 0.0.x transitions.
+3. Check `class_exists('\WC_Payment_Gateway')`. If WC isn't loaded, register the branded "needs WooCommerce" admin notice and bail — the rest of the plugin never wires up.
+4. **Lazy-require `class-gateway.php`** now that the parent WC class is confirmed present. (Requiring it eagerly at the top of the main file was a fatal-error trap when the plugin loaded before WC alphabetically.)
+5. Instantiate and register `Webhook_Handler` on the `woocommerce_api_allscale_checkout` action **unconditionally** — does not depend on the gateway constructor running. This is the fix for known-issue 1.
+6. Register the gateway via the `woocommerce_payment_gateways` filter.
+7. Register `Blocks_Integration` lazily on `woocommerce_blocks_loaded` (same parent-class-availability pattern as the gateway).
+8. Register `Settings_Validator` (hooks into WC's save-fields filter to ping-validate credentials before persistence).
+9. If `is_admin()`, register `Admin` (settings page, AJAX, notices, meta box) and `Setup_Wizard` (first-run wizard + activation redirect).
+10. Run `Migrations::maybe_run()` — version-agnostic, keyed on the presence of the legacy `environment` setting.
 
 ### 4.2 API client (`includes/class-api-client.php`)
 
@@ -259,15 +275,28 @@ A small map from Allscale error codes to localized user-friendly strings. Used b
 
 ### 4.14 Blocks integration (`includes/class-blocks-integration.php`)
 
-Carried forward from 0.1.x essentially unchanged — extends `AbstractPaymentMethodType`, registers a minimal React component that renders the label/description for the block-based checkout. v1.1 will deepen this; v1 just preserves parity.
+Carried forward from 0.1.x essentially unchanged — extends `AbstractPaymentMethodType`, registers a minimal React component that renders the label/description for the block-based checkout. A future release may deepen this; for now we just preserve parity.
 
 ### 4.15 Migrations (`includes/class-migrations.php`)
 
 `maybe_run()` checks the stored plugin version against `ALLSCALE_CHECKOUT_VERSION` and runs idempotent migrations:
 
-- **0.1.x → 0.0.x**: if the stored option `environment` was `sandbox`, queue the sandbox-retired admin notice (one-time). Rename option keys if necessary. The existing `_allscale_checkout_intent_id` order meta is kept under the new key `_allscale_intent_id` via a dual-read fallback so in-flight orders aren't broken.
+- **From the legacy 0.1.x community beta**: detected by the presence of the now-removed `environment` setting in stored gateway options (we don't use `version_compare` — that's fragile across re-versioning). If `environment` was `sandbox`, queue the sandbox-retired admin notice (one-time). Strip the `environment` key. The legacy `_allscale_checkout_intent_id` order meta is kept readable via a dual-read fallback in `Webhook_Handler::find_order_by_intent` and `Gateway::handle_thankyou` so in-flight orders aren't broken.
 
-After a successful run, the stored version option is updated.
+After every run, the stored version option is updated to `ALLSCALE_CHECKOUT_VERSION`. The migration check itself is idempotent (post-first-run, the `environment` signal is gone), so it's safe to invoke on every upgrade.
+
+### 4.16 Setup Wizard (`includes/class-setup-wizard.php`)
+
+A hidden admin page (`admin.php?page=allscale-checkout-setup`) that walks merchants through their first configuration in four steps:
+
+1. **Welcome** — non-custodial trust message, prereq checklist, "Continue".
+2. **Credentials** — paste API key + secret, optional Test Connection, "Continue" runs a server-side ping and only advances on success (the same `/v1/test/ping` flow Settings_Validator uses).
+3. **Webhook** — display the webhook URL with copy button + explicit 4-step manual instructions for pasting it into the Allscale dashboard.
+4. **Done** — celebratory screen with "Place test order" + "Finish & go to settings" CTAs.
+
+The wizard is triggered by an activation hook (`Setup_Wizard::on_activation` sets a 30-second transient; `maybe_redirect_after_activation` reads it on the next admin page load and `wp_safe_redirect`s to step 1). Skipping or completing the wizard sets a persistent option so the redirect never fires again. The wizard URL also stays accessible via a "Run guided setup" link in the welcome banner and a bold "Setup wizard" link on the Plugins page until credentials are configured.
+
+The wizard reuses `Admin`'s `/v1/test/ping` AJAX endpoint and its shared `admin.js` / `admin.css`. Inputs in the wizard form are mirrored into hidden WC-named fields so the shared JS finds them without modification.
 
 ---
 
@@ -353,7 +382,7 @@ allscale-checkout-woocommerce/
 ### v0.0.x — explicitly out of scope (deferred)
 
 - **Setup wizard** (P1 in the design brief — additive, can land in 1.1).
-- **Block-based checkout client-side enhancements** (label/description only in v1; deeper React surface in 1.1).
+- **Block-based checkout client-side enhancements** (label/description only currently; deeper React surface is a future improvement).
 - **Response signing verification** (rarely enabled; will add interface stub but no implementation).
 - **Transaction history / dashboard widgets** — Allscale API does not expose data sources for these.
 - **Refund automation** — non-custodial; impossible to support.
