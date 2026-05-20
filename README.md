@@ -138,11 +138,19 @@ Once WooCommerce is active, the notice disappears and the plugin proceeds normal
 3. If WooCommerce isn't already installed and active, the notice above will guide you through that step first.
 4. After activation, the plugin redirects you to a 4-step setup wizard. If you skip it, you can configure manually under **WooCommerce → Settings → Payments → Allscale Checkout**.
 
+The wizard's third step is the one most worth pausing on — it spells out the only step Allscale can't automate, namely pasting the plugin's webhook URL into your Allscale dashboard:
+
+![Setup wizard — webhook step](docs/screenshots/wizard-webhook.png)
+
 ---
 
 ## Setup
 
 The setup wizard walks through all three steps below in one flow. You can also do them manually.
+
+Once everything is wired up, the gateway settings page looks like this — green pills for verified credentials and a healthy webhook, with the webhook URL ready to copy and the rest of the configuration grouped into focused sections:
+
+![Settings page in healthy steady state](docs/screenshots/settings-healthy.png)
 
 ### 1. Get your Allscale credentials
 
@@ -191,6 +199,10 @@ These are the WooCommerce order states you'll see, and what they mean in Allscal
 | `refunded` | You manually refunded the customer from your wallet and updated the WC status |
 
 Every Allscale state transition writes an order note with a timestamp + reason so the merchant can audit the lifecycle.
+
+Each Allscale order also gets a dedicated **Allscale Payment** meta box in the WooCommerce order screen — the same data the webhook + return-URL fallback persisted to order meta, laid out for at-a-glance auditing:
+
+![Allscale Payment meta box on a confirmed order](docs/screenshots/order-meta-box.png)
 
 ---
 
