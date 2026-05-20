@@ -104,9 +104,10 @@ Pure HTTP layer. No WordPress UI assumptions.
 | Method | Endpoint | Returns |
 |---|---|---|
 | `test_ping()` | `GET /v1/test/ping` | Bool-equivalent success/failure for credential validation |
-| `create_intent(Intent_Request $req)` | `POST /v1/checkout_intents/` | Full intent payload including `checkout_url`, `allscale_checkout_intent_id` |
-| `get_intent_status(string $intent_id)` | `GET /v1/checkout_intents/{id}/status` | Integer status enum (bare int payload) |
+| `create_intent(array $payload)` | `POST /v1/checkout_intents/` | Full intent payload including `checkout_url`, `allscale_checkout_intent_id` |
 | `get_intent_details(string $intent_id)` | `GET /v1/checkout_intents/{id}` | Full intent object including `tx_hash`, `amount_cents`, `actual_paid_amount`, etc. — used by the return-URL fallback |
+
+(`GET /v1/checkout_intents/{id}/status` returns a bare integer payload and was the wrapper Allscale's spec recommends for cheap polling, but the return-URL fallback needs full details anyway so we don't expose a separate `get_intent_status` method — add one if a future polling path needs it.)
 
 Internally, `request($method, $path, $body)` delegates to `Signer::sign_request()` for header construction and uses `wp_remote_request()` for transport. On every response, `Logger::debug()` is called with `request_id`, response status, and latency. Errors are logged at `Logger::warning()` or `Logger::error()` depending on category.
 
@@ -265,8 +266,17 @@ This mirrors the skill's Step 4.5 multi-tenant validation pattern, applied to th
 Only loaded if `is_admin()`. Responsibilities:
 
 - The "Test connection" button: registers an authenticated admin-ajax endpoint (`wp_ajax_allscale_test_connection`) that takes the API key/secret from the request, runs `test_ping()`, and returns a JSON response the frontend JS turns into the status pill.
-- Admin notices controller: queues the 7 notice types defined in the design brief based on plugin state (credentials present? ping ever succeeded? webhook ever received? store currency supported? sandbox migration needed?).
-- Enqueues `assets/js/admin-test-connection.js` and `assets/css/admin.css` only on the WC settings → Allscale tab.
+- Admin notices controller (`Admin::render_notices`): renders 4 notice types as floating admin notices:
+  1. Settings save result (success/error) — surfaced from `Settings_Validator` via transient.
+  2. "First webhook received" — celebratory one-time notice when `OPT_FIRST_WEBHOOK_AT` is first set.
+  3. Sandbox-retired migration notice — one-time after upgrading from a 0.1.x install that had `environment=sandbox`.
+  4. Credentials-missing notice — shown on Plugins / Dashboard screens when the gateway is enabled but credentials are empty.
+
+  Three other notice types from the design brief live elsewhere because they belong with the surface they describe:
+  - **WC required** → `Plugin::render_wc_required_notice` (brand-styled gradient card, fires before any WC-dependent code loads).
+  - **Currency unsupported** → inline notice rendered at the top of the settings page in `Admin::render_settings_page`.
+  - **Activation / get-started** → handled by the `Setup_Wizard` activation redirect and the welcome banner on the empty settings state, not as a floating notice.
+- Enqueues `assets/js/admin.js` and `assets/css/admin.css` on the WC settings → Allscale tab and the order detail screens (CSS-only for orders).
 - Renders the order detail meta box (`Allscale Payment`) via `add_meta_boxes`.
 
 ### 4.13 Error messages (`includes/class-error-messages.php`)

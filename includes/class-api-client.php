@@ -60,17 +60,6 @@ class Api_Client {
 	}
 
 	/**
-	 * GET /v1/checkout_intents/{id}/status — payload is a bare integer.
-	 *
-	 * @param string $intent_id Allscale intent id.
-	 * @return Api_Result
-	 */
-	public function get_intent_status( $intent_id ) {
-		$path = '/v1/checkout_intents/' . rawurlencode( (string) $intent_id ) . '/status';
-		return $this->request( 'GET', $path, null );
-	}
-
-	/**
 	 * GET /v1/checkout_intents/{id} — full intent details, used by the
 	 * thank-you page fallback to read tx_hash + actual_paid_amount.
 	 *
