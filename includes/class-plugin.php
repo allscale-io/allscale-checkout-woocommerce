@@ -128,9 +128,91 @@ final class Plugin {
 	}
 
 	public function render_wc_required_notice() {
-		echo '<div class="notice notice-error"><p><strong>Allscale Checkout</strong> ';
-		esc_html_e( 'requires WooCommerce to be installed and active.', 'allscale-checkout' );
-		echo '</p></div>';
+		// Only show to users who could act on it.
+		if ( ! current_user_can( 'activate_plugins' ) ) {
+			return;
+		}
+
+		// Distinguish "not installed" from "installed but inactive" so the CTA
+		// can deep-link to the right thing.
+		$wc_plugin_file = 'woocommerce/woocommerce.php';
+		if ( ! function_exists( 'get_plugins' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+		$installed = get_plugins();
+		$is_installed = isset( $installed[ $wc_plugin_file ] );
+
+		if ( ! $is_installed && current_user_can( 'install_plugins' ) ) {
+			$cta_url   = wp_nonce_url(
+				self_admin_url( 'update.php?action=install-plugin&plugin=woocommerce' ),
+				'install-plugin_woocommerce'
+			);
+			$cta_label = __( 'Install WooCommerce', 'allscale-checkout' );
+			$sub_text  = __( "Allscale Checkout is a WooCommerce payment gateway. WooCommerce isn't installed on this site yet — install it once, and we'll take it from there.", 'allscale-checkout' );
+		} elseif ( $is_installed ) {
+			$cta_url   = wp_nonce_url(
+				self_admin_url( 'plugins.php?action=activate&plugin=' . rawurlencode( $wc_plugin_file ) ),
+				'activate-plugin_' . $wc_plugin_file
+			);
+			$cta_label = __( 'Activate WooCommerce', 'allscale-checkout' );
+			$sub_text  = __( "Allscale Checkout is a WooCommerce payment gateway. You already have WooCommerce installed — activate it and you're ready to go.", 'allscale-checkout' );
+		} else {
+			// No capability to install + not installed — degrade to plain notice.
+			$cta_url   = '';
+			$cta_label = '';
+			$sub_text  = __( 'Allscale Checkout is a WooCommerce payment gateway. Ask your site administrator to install WooCommerce.', 'allscale-checkout' );
+		}
+
+		$icon_url = plugins_url( 'assets/icon.png', ALLSCALE_CHECKOUT_FILE );
+
+		// Self-contained inline styles — admin.css isn't enqueued on every
+		// admin page, and we want this notice to render correctly anywhere.
+		?>
+		<div class="notice allscale-wc-required-notice" style="
+			position: relative;
+			border: 1px solid #c3c4c7;
+			border-left: 4px solid #0f9b8e;
+			background: linear-gradient(135deg, #e6f6f4 0%, #ffffff 60%);
+			padding: 18px 22px;
+			margin: 14px 20px 5px 2px;
+			overflow: hidden;
+			border-radius: 4px;
+		">
+			<div aria-hidden="true" style="position: absolute; right: -12px; bottom: -18px; opacity: 0.07; pointer-events: none;">
+				<img src="<?php echo esc_url( $icon_url ); ?>" alt="" style="width: 140px; height: auto; display: block;" />
+			</div>
+			<div style="display: flex; gap: 14px; align-items: flex-start; position: relative;">
+				<img src="<?php echo esc_url( $icon_url ); ?>" alt="" style="height: 36px; width: auto; flex: 0 0 auto;" />
+				<div style="flex: 1; min-width: 0;">
+					<div style="font-size: 16px; font-weight: 600; color: #1d2327; margin-bottom: 4px;">
+						<?php esc_html_e( 'Allscale Checkout needs WooCommerce', 'allscale-checkout' ); ?>
+					</div>
+					<div style="font-size: 13.5px; color: #50575e; line-height: 1.5; margin-bottom: 12px; max-width: 640px;">
+						<?php echo esc_html( $sub_text ); ?>
+					</div>
+					<?php if ( $cta_url ) : ?>
+						<a href="<?php echo esc_url( $cta_url ); ?>" style="
+							display: inline-flex;
+							align-items: center;
+							height: 36px;
+							padding: 0 16px;
+							background: #0f9b8e;
+							color: #fff;
+							font-size: 14px;
+							font-weight: 500;
+							text-decoration: none;
+							border-radius: 4px;
+							border: 1px solid #0f9b8e;
+							box-shadow: none;
+							line-height: 1;
+						" onmouseover="this.style.background='#0c857a';this.style.borderColor='#0c857a';" onmouseout="this.style.background='#0f9b8e';this.style.borderColor='#0f9b8e';">
+							<?php echo esc_html( $cta_label ); ?> &rarr;
+						</a>
+					<?php endif; ?>
+				</div>
+			</div>
+		</div>
+		<?php
 	}
 
 	/**

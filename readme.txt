@@ -69,6 +69,7 @@ USD, AUD, CAD, CNY, EUR, GBP, HKD, JPY, SGD. You can also enable **native USDT p
 
 = 1.0.1 =
 * **Fix critical activation fatal** — `class Gateway extends \WC_Payment_Gateway` was loaded unconditionally at plugin file load, causing a fatal error on sites where the plugin folder name sorts before "woocommerce" (e.g. when installed from a GitHub release ZIP whose folder is `allscale-checkout-woocommerce-1.0.0/`). The class is now loaded lazily inside `Plugin::boot()` after the WC parent class is confirmed available. Matches the same fix already applied to `Blocks_Integration` in 1.0.0.
+* **Branded "needs WooCommerce" notice** — Replaced the default red error bar with a brand-styled gradient card that distinguishes "WooCommerce not installed" from "WooCommerce installed but inactive" and provides a one-click CTA (Install or Activate) deep-linked with a valid nonce.
 
 = 1.0.0 =
 * First stable release. Full rewrite of the 0.1.x community beta.
