@@ -3,7 +3,7 @@ Contributors: allscale
 Tags: woocommerce, payment gateway, crypto, usdt, stablecoin, non-custodial
 Requires at least: 5.8
 Tested up to: 6.5
-Stable tag: 0.0.3
+Stable tag: 0.0.4
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -47,6 +47,55 @@ Allscale Checkout is a WordPress plugin (built as a WooCommerce payment gateway)
 5. Click **Test connection**, then **Save changes**.
 6. Copy the webhook URL shown in settings and paste it into your Allscale store's webhook field.
 
+== Screenshots ==
+
+1. The "needs WooCommerce" notice that appears if the plugin is activated on a site that doesn't yet have WooCommerce — one click installs or activates it.
+2. The gateway settings page in its healthy steady state: credentials verified, connection confirmed, webhook receiving.
+3. The setup wizard's third step — copy your webhook URL into your Allscale dashboard. This is the only step Allscale's API can't automate.
+4. The per-order Allscale Payment meta box: tx hash with explorer link, paid/fee/net breakdown, chain, payment method, intent ID.
+
+== External services ==
+
+This plugin connects to **Allscale's API at `https://openapi.allscale.io`** so your customers' payments can be created, confirmed, and settled to your wallet. Specifically:
+
+**What is sent to Allscale, and when:**
+
+- *On settings save and on every "Test connection" click:* the API key and a signed `GET /v1/test/ping` request — verifies the credentials are correct without sending order data.
+- *When a customer clicks "Place order" with Allscale selected:* a signed `POST /v1/checkout_intents/` with the order's total amount in cents, currency (or stable-coin enum), your store's order number, an order description (the names of items in the cart, truncated), the customer's WooCommerce user ID and billing name, and the WooCommerce thank-you URL to redirect them back to after payment.
+- *When the customer lands back on the thank-you page:* a signed `GET /v1/checkout_intents/{id}` to read the on-chain transaction details and reconcile the order.
+
+**What Allscale sends back, and when:**
+
+- *Hosted checkout URL* — the page your customer is redirected to to actually pay.
+- *Webhook callbacks* — when an on-chain payment confirms, Allscale POSTs a signed message to `https://your-site.com/wc-api/allscale_checkout` containing the transaction hash, chain ID, the on-chain settled amount in USDT, and the payment method type. The plugin verifies the HMAC-SHA256 signature before applying any state change.
+
+**Service terms and privacy:**
+
+- Allscale's terms of service: [https://allscale.io/terms](https://allscale.io/terms)
+- Allscale's privacy policy: [https://allscale.io/privacy](https://allscale.io/privacy)
+
+Using this plugin makes your WooCommerce store an integration partner of Allscale. By installing and configuring it, you agree to Allscale's terms.
+
+== Privacy ==
+
+This plugin does not collect any analytics, telemetry, or user data on its own. It does not "call home" to allscale-io or any third party other than the Allscale API documented above.
+
+**Personal data this plugin transmits to Allscale** for the purpose of processing each order:
+
+- The customer's WooCommerce user ID (an internal numeric ID, only if they're a logged-in customer)
+- The customer's billing first + last name
+- The order number and total amount
+- A short description of the items in the order (product names, truncated to 200 characters)
+
+**Personal data this plugin stores locally** in the WordPress database, on each order:
+
+- The Allscale checkout intent ID
+- The on-chain transaction hash (public blockchain data)
+- The settled amount, fee, and net amount in USDT
+- The chain ID and payment-method type
+
+No card numbers, no wallet seed phrases, no private keys, and no email addresses are sent or stored by this plugin.
+
 == Frequently Asked Questions ==
 
 = Does sandbox mode work? =
@@ -66,6 +115,9 @@ No. Allscale is non-custodial; funds settle directly to your wallet. To refund a
 USD, AUD, CAD, CNY, EUR, GBP, HKD, JPY, SGD. You can also enable **native USDT pricing** for crypto-first stores.
 
 == Changelog ==
+
+= 0.0.4 =
+* WordPress.org submission prep: added `== External services ==` and `== Privacy ==` readme sections required by WordPress.org for any plugin that communicates with an external API. Added `== Screenshots ==` section referencing the four images in `.wordpress-org/`. No code-behavior changes.
 
 = 0.0.3 =
 * **Renamed**: plugin headline framing changed from "for WooCommerce" to "for WordPress". The plugin still requires WooCommerce (and still ships as a WC payment gateway under the hood) — that's now positioned as a dependency rather than the marketing headline. Class names, namespaces, option keys, hook names, and the text domain are unchanged.
