@@ -1,0 +1,42 @@
+# Files and directories excluded from the plugin distribution ZIP.
+#
+# Used by wp-cli's `wp dist-archive` and the 10up/action-wordpress-plugin-deploy
+# GitHub Action. Everything listed here is part of the source repo but NOT
+# something merchants need on their WordPress install.
+
+# Version control + ignore files
+.git
+.gitignore
+.gitattributes
+
+# Internal documentation (for devs/AI agents, not merchants)
+docs
+
+# WordPress.org marketplace assets — these go to SVN `assets/`, not the
+# plugin install. Excluded so we don't bloat the merchant-facing ZIP with
+# banner/icon/screenshot copies that already get served by WP.org's
+# listing page.
+.wordpress-org
+
+# This file itself
+.distignore
+
+# Editor / OS noise
+.idea
+.vscode
+.DS_Store
+Thumbs.db
+
+# Common build / dev artifacts (if/when added)
+node_modules
+vendor/test
+tests
+phpunit.xml
+phpunit.xml.dist
+phpcs.xml
+phpcs.xml.dist
+.phpcs.xml.dist
+package.json
+package-lock.json
+composer.lock
+composer.json.lock
