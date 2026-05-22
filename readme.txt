@@ -3,7 +3,7 @@ Contributors: allscale
 Tags: woocommerce, payment gateway, crypto, usdt, stablecoin, non-custodial
 Requires at least: 5.8
 Tested up to: 6.5
-Stable tag: 0.0.4
+Stable tag: 0.0.5
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -115,6 +115,9 @@ No. Allscale is non-custodial; funds settle directly to your wallet. To refund a
 USD, AUD, CAD, CNY, EUR, GBP, HKD, JPY, SGD. You can also enable **native USDT pricing** for crypto-first stores.
 
 == Changelog ==
+
+= 0.0.5 =
+* Packaging hygiene: release ZIPs now exclude dev-only content (`.wordpress-org/` marketplace assets, internal `docs/`, dev-facing `README.md`) via a `.distignore` file. v0.0.4 ZIPs accidentally bundled all of that — merchants now get only the runtime code. No code-behavior changes.
 
 = 0.0.4 =
 * WordPress.org submission prep: added `== External services ==` and `== Privacy ==` readme sections required by WordPress.org for any plugin that communicates with an external API. Added `== Screenshots ==` section referencing the four images in `.wordpress-org/`. No code-behavior changes.

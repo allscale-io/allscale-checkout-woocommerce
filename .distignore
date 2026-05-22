@@ -21,9 +21,11 @@ docs
 # This file itself
 .distignore
 
-# Editor / OS noise
+# Editor / OS / AI-tooling noise
 .idea
 .vscode
+.claude
+.cursor
 .DS_Store
 Thumbs.db
 
