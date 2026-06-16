@@ -4,7 +4,7 @@ A WordPress plugin (built as a WooCommerce payment gateway) that lets merchants 
 
 **What is Allscale?** Allscale is a self-custody crypto payment processor. It hosts the checkout page where buyers pay, validates payments on-chain, and settles to the merchant's wallet. The merchant's API key + secret are scoped to a single Allscale "store" — Allscale itself never custodies funds.
 
-> **Status:** pre-release (v0). Functional but lightly tested. Don't run on production stores yet.
+> **Status:** stable (v1.0.0). Passed WordPress.org Plugin Check and is approved for the plugin directory.
 
 ---
 
