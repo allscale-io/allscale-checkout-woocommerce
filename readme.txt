@@ -1,14 +1,14 @@
-=== Allscale Checkout for WordPress ===
-Contributors: allscale
-Tags: woocommerce, payment gateway, crypto, usdt, stablecoin, non-custodial
+=== Allscale Checkout ===
+Contributors: allscaleio
+Tags: woocommerce, payment gateway, crypto, usdt, stablecoin
 Requires at least: 5.8
-Tested up to: 6.5
-Stable tag: 0.0.5
+Tested up to: 7.0
+Stable tag: 1.0.0
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Accept crypto payments on WordPress with a 0.6% fee (minimum $0.10) and instant USDT settlement to your own wallet. Non-custodial. Requires WooCommerce.
+Accept crypto payments with 0.6% fees (min $0.10) and instant USDT settlement to your own wallet. Non-custodial. Requires WooCommerce.
 
 == Description ==
 
@@ -71,8 +71,8 @@ This plugin connects to **Allscale's API at `https://openapi.allscale.io`** so y
 
 **Service terms and privacy:**
 
-- Allscale's terms of service: [https://allscale.io/terms](https://allscale.io/terms)
-- Allscale's privacy policy: [https://allscale.io/privacy](https://allscale.io/privacy)
+- Allscale's terms of service: [https://www.allscale.io/agreement](https://www.allscale.io/agreement)
+- Allscale's privacy policy: [https://www.allscale.io/policy](https://www.allscale.io/policy)
 
 Using this plugin makes your WooCommerce store an integration partner of Allscale. By installing and configuring it, you agree to Allscale's terms.
 
@@ -116,6 +116,14 @@ USD, AUD, CAD, CNY, EUR, GBP, HKD, JPY, SGD. You can also enable **native USDT p
 
 == Changelog ==
 
+= 1.0.0 =
+* First stable release. The plugin is now considered production-ready after the v0 hardening cycle. No breaking changes from 0.0.5 — existing settings, credentials, and order meta carry over untouched.
+* Plugin name simplified to "Allscale Checkout" (dropped the redundant "for WordPress" suffix). Slug, class names, namespaces, option keys, hook names, and the text domain are unchanged.
+* Compatibility verified with WordPress 7.0 and WooCommerce 10.8.
+* Hardening: admin asset-enqueue now unslashes and sanitizes the `$_GET` page-detection values.
+* Plugin Check pass: form-control output now routed through `wp_kses` allowlist, translator comments repositioned for i18n linting, removed the discouraged `load_plugin_textdomain` call (WordPress.org auto-loads translations) and the now-unused `Domain Path` header, and trimmed the readme short description to 150 characters.
+* Review prep: moved the thank-you polling and setup-wizard inline scripts into enqueued JS files, removed the default customer-facing "Powered by" attribution from the gateway description (admins can add their own), and corrected the terms/privacy URLs.
+
 = 0.0.5 =
 * Packaging hygiene: release ZIPs now exclude dev-only content (`.wordpress-org/` marketplace assets, internal `docs/`, dev-facing `README.md`) via a `.distignore` file. v0.0.4 ZIPs accidentally bundled all of that — merchants now get only the runtime code. No code-behavior changes.
 
@@ -158,6 +166,9 @@ Major changes vs the prior 0.1.x community beta:
 * Full i18n with text domain `allscale-checkout`.
 
 == Upgrade Notice ==
+
+= 1.0.0 =
+First stable release. Safe drop-in upgrade from 0.0.x — no settings or data changes required.
 
 = 0.0.1 =
 First v0 release. Sandbox mode has been retired — use test-store credentials. If you're coming from the 0.1.x community beta, the first activation will show a one-time notice if your previous environment setting was sandbox.
