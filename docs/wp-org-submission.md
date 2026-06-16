@@ -6,71 +6,58 @@ A working document for when we decide to submit the plugin to [WordPress.org's p
 
 ## Status
 
-**Not submitted yet.** Pre-work is done in v0.0.4 (readme.txt sections, `.wordpress-org/` assets, this checklist). Actual submission is gated on the decisions in §1 below.
+**Submitted and approved.** v1.0.0 passed WordPress.org Plugin Check, the hosting request was approved, and the plugin is published at https://wordpress.org/plugins/allscale-checkout. Code is uploaded via SVN (see §4). The open decisions in §1 below were all resolved; they're kept as a record of how each was settled.
 
 ---
 
-## 1. Open decisions before submitting
+## 1. Decisions made before submitting (resolved)
 
-Each of these needs to be settled by Shawn before clicking "Submit a Plugin." Some are subjective, some are factual.
+Each of these was settled before submission. Recorded here for posterity.
 
-### 1.1 Are we ready for "stable" framing?
+### 1.1 Are we ready for "stable" framing? — Resolved: Path B
 
-WordPress.org's review team reads the plugin and the readme.txt holistically. They reject submissions that read as "deliberately pre-release / not ready." Right now we say things like:
+We took **Path B**: swept the "v0 / not yet stable / don't run on production" framing out of all merchant-facing copy (README.md, readme.txt, architecture intro) and bumped the version to **1.0.0** before submitting. The plugin cleared Plugin Check on the first pass.
 
-- README.md banner: *"Status: pre-release (v0). Functional but lightly tested. Don't run on production stores yet."*
-- Architecture doc: *"deliberately labeled v0 — not yet production-stable"*
+For the record, the two paths considered were:
 
-We have two paths:
+- **Path A** — leave the v0 framing, submit anyway. Likely outcome: rejected with feedback to remove "beta" / "not ready" language, then resubmit clean.
+- **Path B** (chosen) — remove the pre-release framing first, bump to a non-v0 version, then submit. More work up front, more likely to clear first time.
 
-- **Path A** — leave the v0 framing, submit anyway. Likely outcome: rejected with feedback to remove "beta" / "not ready" language. Then we resubmit clean.
-- **Path B** — sweep the "v0 / not yet stable / don't run on production" framing out of all merchant-facing copy first (README, readme.txt, architecture intro), bump version to a non-v0 number, then submit. More work, more honest, more likely to clear first time.
+### 1.2 Plugin Name — Resolved: `Allscale Checkout`
 
-Until this is decided, do not submit.
+Shipped as **`Allscale Checkout`** (dropped the "for WordPress" suffix). Shorter, no "WordPress" in the name, and the directory page itself is on wordpress.org so the platform is obvious.
 
-### 1.2 Plugin Name
+**Plugin slug** is `allscale-checkout` — reserved at submission and permanent.
 
-Current header: `Allscale Checkout for WordPress`.
+### 1.3 Trademark / authorship — Resolved: `allscaleio` account
 
-WordPress.org's [trademark / naming guidelines](https://developer.wordpress.org/plugins/wordpress-org/detailed-plugin-guidelines/#17-plugins-must-respect-trademarks-copyrights-and-project-names) say plugins should not use "WordPress" in the name *except* in cases like "for WordPress" — and even then, reviewers sometimes request removal because the platform is implicit. Two safe alternatives:
+Submitted from the **`allscaleio`** WordPress.org account (owned by Allscale), not a personal account, so trademark ownership is clear.
 
-- **`Allscale Checkout`** alone — shorter, no "WordPress" in the name. The directory page itself is on wordpress.org, so the platform is obvious. (Recommended.)
-- **`Allscale Checkout — Crypto Payments for WordPress`** — uses a subtitle format. Borderline; reviewer may or may not let it through.
+### 1.4 Tested up to — Resolved
 
-**Plugin slug** (the URL-friendly identifier) will likely be `allscale-checkout` regardless of the visible name. The slug is reserved at submission time and is permanent.
-
-### 1.3 Trademark / authorship
-
-WordPress.org reviewers verify that the entity submitting owns or has permission to use the trademarks in the plugin name and content. We use "Allscale" everywhere. If "Allscale" is a registered trademark held by an entity other than the WordPress.org account submitting, the submission needs to come from the trademark holder's account or include an explicit authorization statement.
-
-Decision needed: which WordPress.org account submits this? Probably an `allscale` account owned by Allscale Inc., not a personal account.
-
-### 1.4 Tested up to
-
-`readme.txt` currently says `Tested up to: 6.5`. Before submitting, verify the plugin works against the latest WordPress release at submission time (currently 6.7+). Update if needed.
+`readme.txt` now declares `Tested up to: 7.0` (and `WC tested up to: 10.8`), verified before submission.
 
 ---
 
 ## 2. Pre-submission checklist
 
-Everything in here should be done before the submission form goes in. Most of it is done as of v0.0.4 — annotated below.
+Everything in here was completed before the submission form went in. All items below were resolved for the v1.0.0 submission, which passed Plugin Check.
 
-| Item | Status as of v0.0.4 | Notes |
+| Item | Status (v1.0.0) | Notes |
 |---|---|---|
 | `readme.txt` has all WP.org-required sections | ✅ Done | Contributors, Tags, Requires/Tested, Stable tag, License, short description, Description, External services, Privacy, Screenshots, FAQ, Changelog, Upgrade Notice. |
-| Plugin header has Plugin Name, URI, Description, Version, Author, License, Text Domain, Domain Path, Requires at least, Requires PHP, WC requires at least | ✅ Done | All present in `allscale-checkout.php`. |
+| Plugin header has Plugin Name, URI, Description, Version, Author, License, Text Domain, Requires at least, Requires PHP, WC requires at least | ✅ Done | All present in `allscale-checkout.php`. (The `Domain Path` header was removed — WordPress.org auto-loads translations, so it's unused.) |
 | GPLv2 LICENSE file in plugin root | ✅ Done | `LICENSE` in repo root. |
 | `uninstall.php` cleans up plugin-owned options | ✅ Done | Removes all `allscale_checkout_*` options + the WC settings option + relevant transients. |
 | No "calls home" / no telemetry | ✅ Done | We only ever contact `openapi.allscale.io`, which is documented in the External services readme.txt section. |
-| All external service usage disclosed in readme.txt | ✅ Done | Added in v0.0.4. |
-| Privacy implications disclosed in readme.txt | ✅ Done | Added in v0.0.4. |
-| No loading of external JS / CSS at runtime | ✅ Done | We load only local assets (`assets/css/admin.css`, `assets/js/admin.js`, `assets/js/blocks.js`). No CDN scripts. |
+| All external service usage disclosed in readme.txt | ✅ Done | |
+| Privacy implications disclosed in readme.txt | ✅ Done | |
+| No loading of external JS / CSS at runtime | ✅ Done | We load only local assets (`assets/css/admin.css`, `assets/js/admin.js`, `assets/js/blocks.js`, `assets/js/thankyou.js`, `assets/js/wizard.js`). No CDN scripts, no inline scripts. |
 | No obfuscated or minified third-party code without source | ✅ Done | Plain readable PHP / JS / CSS throughout. |
-| Compatible with the latest WP release | ⚠️ To verify | Test against WordPress 6.7+ before submission. |
-| `.wordpress-org/` icons + banner + screenshots | ✅ Generated | Banner is a placeholder — replace with real design before submitting. |
-| Plugin works without any database content beyond fresh activation | ✅ Should | Migrations module is idempotent + tolerant of empty state. Verify on a fresh WP install. |
-| Plugin doesn't error in PHP 8.0 / 8.1 / 8.2 / 8.3 | ⚠️ To verify | Currently tested only on PHP 8.2 / 8.3. Linting passes on PHP 8.3. |
-| Plugin tested on a clean WP+WC install | ⚠️ To verify | One side-by-side test with WC active + active gateway + real test order recommended. |
+| Compatible with the latest WP release | ✅ Done | `Tested up to: 7.0`; `WC tested up to: 10.8`. |
+| `.wordpress-org/` icons + banner + screenshots | ✅ Done | Icons, banner pair, and 4 screenshots present; uploaded to SVN `assets/`. |
+| Plugin works without any database content beyond fresh activation | ✅ Done | Migrations module is idempotent + tolerant of empty state. |
+| Plugin passes WordPress.org Plugin Check | ✅ Done | Cleared on submission (inline scripts moved to enqueued files, output escaped via `wp_kses`, inputs sanitized). |
 
 ---
 
@@ -78,7 +65,7 @@ Everything in here should be done before the submission form goes in. Most of it
 
 ### 3.1 Create the WordPress.org account
 
-If submitting under `allscale` (recommended), create a wordpress.org account with that username. Use a long-lived email tied to Allscale infra so future reset / notifications go somewhere durable. Two-factor recommended.
+Submitted under the `allscaleio` account. Use a long-lived email tied to Allscale infra so future reset / notifications go somewhere durable. Two-factor recommended.
 
 ### 3.2 Build the submission ZIP
 
@@ -123,7 +110,7 @@ The reviewer either:
 Common reasons we might get feedback:
 
 - **"Remove 'WordPress' from the plugin name"** — switch to `Allscale Checkout` and resubmit.
-- **"Document the external API usage"** — already done in v0.0.4, point them at the readme.txt section.
+- **"Document the external API usage"** — already done in the readme.txt External services section; point them at it.
 - **"Plugin reads as pre-release"** — see §1.1; remove v0/beta language and resubmit.
 - **"Cannot verify Allscale trademark ownership"** — see §1.3; submit from a trademark-holder account or send authorization.
 
@@ -137,8 +124,7 @@ This is the part that surprises most people. WordPress.org uses **Subversion** (
 plugins.svn.wordpress.org/allscale-checkout/
 ├── trunk/         ← current development version (the code merchants install)
 ├── tags/
-│   ├── 0.0.4/    ← each released version, committed once and not touched again
-│   ├── 0.1.0/
+│   ├── 1.0.0/    ← each released version, committed once and not touched again
 │   └── ...
 └── assets/        ← banner / icon / screenshots (NOT shipped to merchants)
     ├── icon-128x128.png
@@ -169,10 +155,10 @@ rsync -av --delete \
 rsync -av /path/to/git/repo/.wordpress-org/ assets/
 
 # Tag this release
-svn cp trunk/ tags/0.0.4/
+svn cp trunk/ tags/1.0.0/
 
 # Commit. WP.org will email a deploy notification.
-svn ci -m "Release 0.0.4" --username allscale
+svn ci -m "Release 1.0.0" --username allscaleio
 ```
 
 ### 4.2 Automated SVN release via GitHub Action

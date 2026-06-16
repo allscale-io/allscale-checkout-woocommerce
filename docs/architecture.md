@@ -1,6 +1,6 @@
-# Allscale Checkout for WordPress — v0.0.x Rebuild Architecture
+# Allscale Checkout for WordPress — v1.0.0 Architecture
 
-This document describes the architecture for the v0.0.x pre-release rebuild of the plugin (deliberately labeled v0 — not yet production-stable). It captures (a) what changed in the underlying Allscale Checkout API since the 0.1.x plugin was written, (b) how the rebuild is structured, (c) how each known issue in 0.1.x is resolved, and (d) what is in and out of scope.
+This document describes the architecture of the plugin as shipped in v1.0.0 (the first stable release, which passed WordPress.org Plugin Check and is published in the plugin directory). It grew out of the ground-up rebuild from the legacy 0.1.x plugin. It captures (a) what changed in the underlying Allscale Checkout API since the 0.1.x plugin was written, (b) how the rebuild is structured, (c) how each known issue in 0.1.x is resolved, and (d) what is in and out of scope.
 
 For the UI specification that pairs with this architecture, see [`design-brief.md`](./design-brief.md).
 
@@ -374,7 +374,7 @@ allscale-wordpress-plugin/
 
 ## 7. Scope
 
-### v0.0.x — in scope
+### v1.0.0 — in scope (shipped)
 
 - All deltas in §1 (sandbox removal, redirect_url at top level, expanded status enum, intent details vs status endpoint, error code mapping, 0.1 USDT minimum, webhook_id verification).
 - All known issue fixes in §3.
@@ -384,30 +384,30 @@ allscale-wordpress-plugin/
 - Admin notices system (7 notice types from the design brief).
 - Logger wrapper with debug toggle.
 - Full i18n.
-- 0.1.x → 0.0.x migration with sandbox-retired notice.
+- 0.1.x → 1.0.0 migration with sandbox-retired notice.
 - Native USDT pricing as an opt-in setting.
 - Webhook health observation: `last_webhook_at` and first-webhook celebration notice.
 - README and `readme.txt` rewrite.
+- **Setup wizard** — a guided activation-to-first-payment flow (pulled forward from the deferred list and shipped in 1.0.0).
+- **WordPress.org submission** — submitted, passed Plugin Check, and approved for the directory.
 
-### v0.0.x — explicitly out of scope (deferred)
+### v1.0.0 — explicitly out of scope (deferred)
 
-- **Setup wizard** (P1 in the design brief — additive, can land in 1.1).
 - **Block-based checkout client-side enhancements** (label/description only currently; deeper React surface is a future improvement).
 - **Response signing verification** (rarely enabled; will add interface stub but no implementation).
 - **Transaction history / dashboard widgets** — Allscale API does not expose data sources for these.
 - **Refund automation** — non-custodial; impossible to support.
-- **WP.org submission** — requires legal review and a separate process.
-- **PHPUnit test suite** — recommended for 1.1.
+- **PHPUnit test suite** — recommended for a future release.
 - **RTL / dark mode design polish.**
 
 ---
 
-## 8. Migration plan (0.1.x → 0.0.x)
+## 8. Migration plan (0.1.x → 1.0.0)
 
 For merchants upgrading in place:
 
 1. **Settings option key** is preserved (`woocommerce_allscale_checkout_settings`). No data loss.
-2. **Order meta keys** for in-flight orders: the new code reads both `_allscale_checkout_intent_id` (legacy) and `_allscale_intent_id` (new), preferring the new one. After 0.0.1, new orders only write the new key.
+2. **Order meta keys** for in-flight orders: the new code reads both `_allscale_checkout_intent_id` (legacy) and `_allscale_intent_id` (new), preferring the new one. New orders only write the new key.
 3. **`environment` setting**: if previously `sandbox`, queue the migration notice telling the merchant sandbox is retired and to use test-store credentials. The field is no longer rendered in settings; the stored value is silently ignored on upgrade.
 4. **Webhook URL** is unchanged. No action required from the merchant.
 5. **Credentials**: existing API key and secret remain valid (no rotation forced). The first save after upgrade re-validates them via the new pre-save ping; if they were already valid before, validation passes silently.
