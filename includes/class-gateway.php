@@ -66,7 +66,7 @@ class Gateway extends \WC_Payment_Gateway {
 			'description'          => array(
 				'title'       => __( 'Description shown to customers', 'allscale-checkout' ),
 				'type'        => 'textarea',
-				'default'     => __( 'Pay securely with your crypto wallet. Powered by Allscale.', 'allscale-checkout' ),
+				'default'     => __( 'Pay securely with your crypto wallet.', 'allscale-checkout' ),
 			),
 			'api_key'              => array(
 				'title' => __( 'API key', 'allscale-checkout' ),
@@ -385,40 +385,25 @@ class Gateway extends \WC_Payment_Gateway {
 
 		// If pending, refresh every 10 seconds for up to 5 minutes TOTAL across
 		// reloads. We persist the original start time in sessionStorage so the
-		// 5-minute cap actually holds (not "5 minutes per reload").
+		// 5-minute cap actually holds (not "5 minutes per reload"). The polling
+		// logic lives in assets/js/thankyou.js; the per-order session key is
+		// passed in via wp_localize_script.
 		if ( $tone === 'pending' ) {
-			$intent_id = (string) $order->get_meta( Status_Mapper::META_INTENT_ID );
+			$intent_id   = (string) $order->get_meta( Status_Mapper::META_INTENT_ID );
 			$session_key = 'allscale_thankyou_started_' . md5( $intent_id !== '' ? $intent_id : (string) $order->get_id() );
-			?>
-			<script>
-			(function(){
-				var key = <?php echo wp_json_encode( $session_key ); ?>;
-				var maxMs = 5 * 60 * 1000;       // 5 minutes total polling window
-				var intervalMs = 10000;          // poll every 10 seconds
 
-				var started;
-				try {
-					started = parseInt(window.sessionStorage.getItem(key), 10);
-					if (!started || isNaN(started)) {
-						started = Date.now();
-						window.sessionStorage.setItem(key, String(started));
-					}
-				} catch (_) {
-					started = Date.now();
-				}
-
-				if (Date.now() - started >= maxMs) {
-					return; // hit the cap — stop reloading
-				}
-
-				setTimeout(function(){
-					if (Date.now() - started < maxMs) {
-						window.location.reload();
-					}
-				}, intervalMs);
-			})();
-			</script>
-			<?php
+			wp_enqueue_script(
+				'allscale-thankyou',
+				plugins_url( 'assets/js/thankyou.js', ALLSCALE_CHECKOUT_FILE ),
+				array(),
+				ALLSCALE_CHECKOUT_VERSION,
+				true
+			);
+			wp_localize_script(
+				'allscale-thankyou',
+				'allscaleThankyou',
+				array( 'key' => $session_key )
+			);
 		}
 	}
 

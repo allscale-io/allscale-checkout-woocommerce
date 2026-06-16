@@ -60,10 +60,14 @@ final class Admin {
 	 * @param string $hook_suffix Current admin page slug.
 	 */
 	public static function enqueue_assets( $hook_suffix ) {
-		// Only on the WC settings page for our section.
+		// Only on the WC settings page for our section. These read-only $_GET
+		// values are for page detection (no state change), but we still unslash
+		// and sanitize them to satisfy static analysis and defense-in-depth.
+		$tab     = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$section = isset( $_GET['section'] ) ? sanitize_key( wp_unslash( $_GET['section'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$is_settings_page = ( $hook_suffix === 'woocommerce_page_wc-settings' )
-			&& isset( $_GET['tab'] ) && 'checkout' === $_GET['tab']
-			&& isset( $_GET['section'] ) && Gateway::ID === $_GET['section'];
+			&& 'checkout' === $tab
+			&& Gateway::ID === $section;
 
 		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
 		$is_order_screen = $screen && ( $screen->id === 'shop_order' || $screen->id === 'woocommerce_page_wc-orders' );
@@ -228,8 +232,8 @@ final class Admin {
 							<?php esc_html_e( 'Supported currencies: USD, EUR, GBP, CAD, AUD, JPY, CNY, SGD, HKD.', 'allscale-checkout' ); ?>
 							<?php
 							printf(
-								/* translators: %s is the WooCommerce General settings link */
 								wp_kses(
+									/* translators: %s is the WooCommerce General settings link */
 									__( 'Change your store currency in %s, or enable native USDT pricing in the Payment configuration section below.', 'allscale-checkout' ),
 									array( 'a' => array( 'href' => array() ) )
 								),
@@ -435,8 +439,8 @@ final class Admin {
 								'yes' === $gateway->get_option( 'debug_logging' ),
 								__( 'Enable debug logging', 'allscale-checkout' ),
 								sprintf(
-									/* translators: %s is the linked path to WooCommerce logs */
 									wp_kses(
+										/* translators: %s is the linked path to WooCommerce logs */
 										__( 'Writes detailed activity to %s.', 'allscale-checkout' ),
 										array( 'a' => array( 'href' => array() ) )
 									),
@@ -489,9 +493,52 @@ final class Admin {
 	private static function form_row( $label_html, $control_html ) {
 		echo '<div class="as-form-row">';
 		echo '<div class="as-form-label">' . esc_html( $label_html ) . '</div>';
-		// $control_html is composed via esc_* helpers at construction; allow as-is.
-		echo '<div class="as-form-control">' . $control_html . '</div>';
+		// $control_html is composed via esc_* helpers at construction; run it through
+		// wp_kses with an allowlist of the form-control elements it can contain.
+		echo '<div class="as-form-control">' . wp_kses( $control_html, self::control_allowed_html() ) . '</div>';
 		echo '</div>';
+	}
+
+	/**
+	 * Allowed HTML for form-control markup passed to form_row() / render_toggle().
+	 *
+	 * @return array
+	 */
+	private static function control_allowed_html() {
+		return array(
+			'input'    => array(
+				'type'                 => array(),
+				'class'                => array(),
+				'name'                 => array(),
+				'id'                   => array(),
+				'value'                => array(),
+				'placeholder'          => array(),
+				'autocomplete'         => array(),
+				'checked'              => array(),
+				'data-as-secret-input' => array(),
+			),
+			'textarea' => array(
+				'rows'  => array(),
+				'class' => array(),
+				'name'  => array(),
+			),
+			'button'   => array(
+				'type'                  => array(),
+				'class'                 => array(),
+				'data-as-toggle-secret' => array(),
+			),
+			'label'    => array( 'class' => array(), 'for' => array() ),
+			'span'     => array( 'class' => array() ),
+			'div'      => array( 'class' => array() ),
+			'p'        => array( 'class' => array() ),
+			'a'        => array(
+				'href'   => array(),
+				'target' => array(),
+				'rel'    => array(),
+			),
+			'strong'   => array(),
+			'br'       => array(),
+		);
 	}
 
 	/**

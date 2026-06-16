@@ -143,8 +143,10 @@ final class Setup_Wizard {
 	 * Step 2 form post — validate via /v1/test/ping, persist if good.
 	 */
 	private static function handle_save_credentials() {
-		$api_key    = isset( $_POST['api_key'] ) ? sanitize_text_field( wp_unslash( $_POST['api_key'] ) ) : '';
-		$api_secret = isset( $_POST['api_secret'] ) ? sanitize_text_field( wp_unslash( $_POST['api_secret'] ) ) : '';
+		// Nonce is verified by the caller handle_post() via check_admin_referer( self::NONCE )
+		// before this method runs; phpcs cannot trace that across methods.
+		$api_key    = isset( $_POST['api_key'] ) ? sanitize_text_field( wp_unslash( $_POST['api_key'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$api_secret = isset( $_POST['api_secret'] ) ? sanitize_text_field( wp_unslash( $_POST['api_secret'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
 
 		if ( $api_key === '' || $api_secret === '' ) {
 			set_transient( self::TRANSIENT_ERROR, __( 'Both API key and API secret are required.', 'allscale-checkout' ), 30 );
@@ -176,7 +178,7 @@ final class Setup_Wizard {
 			$settings['title'] = __( 'Pay with Crypto (Allscale)', 'allscale-checkout' );
 		}
 		if ( empty( $settings['description'] ) ) {
-			$settings['description'] = __( 'Pay securely with your crypto wallet. Powered by Allscale.', 'allscale-checkout' );
+			$settings['description'] = __( 'Pay securely with your crypto wallet.', 'allscale-checkout' );
 		}
 		update_option( 'woocommerce_' . Gateway::ID . '_settings', $settings );
 		update_option( Plugin::OPT_LAST_PING_AT, time(), false );
@@ -228,6 +230,15 @@ final class Setup_Wizard {
 			'allscale-checkout-admin',
 			plugins_url( 'assets/js/admin.js', ALLSCALE_CHECKOUT_FILE ),
 			array(),
+			ALLSCALE_CHECKOUT_VERSION,
+			true
+		);
+		// Wizard-only glue that mirrors the credential inputs into the WC-named
+		// fields admin.js expects. Depends on admin.js so it loads after it.
+		wp_enqueue_script(
+			'allscale-checkout-wizard',
+			plugins_url( 'assets/js/wizard.js', ALLSCALE_CHECKOUT_FILE ),
+			array( 'allscale-checkout-admin' ),
 			ALLSCALE_CHECKOUT_VERSION,
 			true
 		);
@@ -450,43 +461,6 @@ final class Setup_Wizard {
 				</button>
 			</div>
 		</form>
-
-		<script>
-			// The test-connection JS in admin.js reads inputs by their WC settings
-			// names. In the wizard, our inputs use plain `api_key` / `api_secret`,
-			// so mirror their values into a fake WC-named hidden field so the
-			// shared JS can pick them up without modification.
-			(function () {
-				var keyInput = document.getElementById('aw-api-key');
-				var secretInput = document.getElementById('aw-api-secret');
-				if (!keyInput || !secretInput) { return; }
-				keyInput.setAttribute('name', 'api_key');
-				secretInput.setAttribute('name', 'api_secret');
-				// Inject mirrors so admin.js can find them.
-				function inject() {
-					if (!document.querySelector('input[name="woocommerce_allscale_checkout_api_key"]')) {
-						var k = document.createElement('input');
-						k.type = 'hidden';
-						k.name = 'woocommerce_allscale_checkout_api_key';
-						document.body.appendChild(k);
-					}
-					if (!document.querySelector('input[name="woocommerce_allscale_checkout_api_secret"]')) {
-						var s = document.createElement('input');
-						s.type = 'hidden';
-						s.name = 'woocommerce_allscale_checkout_api_secret';
-						document.body.appendChild(s);
-					}
-				}
-				function sync() {
-					inject();
-					document.querySelector('input[name="woocommerce_allscale_checkout_api_key"]').value = keyInput.value;
-					document.querySelector('input[name="woocommerce_allscale_checkout_api_secret"]').value = secretInput.value;
-				}
-				keyInput.addEventListener('input', sync);
-				secretInput.addEventListener('input', sync);
-				sync();
-			})();
-		</script>
 		<?php
 	}
 

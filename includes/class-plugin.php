@@ -54,7 +54,8 @@ final class Plugin {
 		}
 		$this->booted = true;
 
-		add_action( 'init', array( $this, 'load_textdomain' ), 1 );
+		// Translations for WordPress.org-hosted plugins are loaded automatically
+		// since WP 4.6 — no load_plugin_textdomain() call is needed.
 		add_action( 'before_woocommerce_init', array( $this, 'declare_compatibility' ) );
 
 		// WC is required.
@@ -88,14 +89,6 @@ final class Plugin {
 		}
 
 		Migrations::maybe_run();
-	}
-
-	public function load_textdomain() {
-		load_plugin_textdomain(
-			'allscale-checkout',
-			false,
-			dirname( plugin_basename( ALLSCALE_CHECKOUT_FILE ) ) . '/languages'
-		);
 	}
 
 	public function declare_compatibility() {

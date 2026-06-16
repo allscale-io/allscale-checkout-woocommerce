@@ -59,7 +59,7 @@ final class Blocks_Integration extends \Automattic\WooCommerce\Blocks\Payments\I
 			'title'       => $this->get_setting( 'title', __( 'Pay with Crypto (Allscale)', 'allscale-checkout' ) ),
 			'description' => $this->get_setting(
 				'description',
-				__( 'Pay securely with your crypto wallet. Powered by Allscale.', 'allscale-checkout' )
+				__( 'Pay securely with your crypto wallet.', 'allscale-checkout' )
 			),
 			'icon'        => plugins_url( 'assets/icon.png', ALLSCALE_CHECKOUT_FILE ),
 			'supports'    => $this->get_supported_features(),
