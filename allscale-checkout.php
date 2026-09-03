@@ -3,7 +3,7 @@
  * Plugin Name: Allscale Checkout for WordPress
  * Plugin URI: https://github.com/allscale-io/allscale-wordpress-plugin
  * Description: Accept crypto payments — 0.6% fees (min $0.10), instant USDT settlement directly to your wallet. Non-custodial: your funds are never held by a third party. Requires an <a href="https://allscale.io">Allscale account</a>.
- * Version: 0.0.5
+ * Version: 0.0.6
  * Author: AllScale community
  * Author URI: https://allscale.io
  * License: GPLv2 or later
@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'ALLSCALE_CHECKOUT_VERSION', '0.0.5' );
+define( 'ALLSCALE_CHECKOUT_VERSION', '0.0.6' );
 define( 'ALLSCALE_CHECKOUT_FILE', __FILE__ );
 define( 'ALLSCALE_CHECKOUT_PATH', plugin_dir_path( __FILE__ ) );
 

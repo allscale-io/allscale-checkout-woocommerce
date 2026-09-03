@@ -303,17 +303,28 @@ final class Admin {
 								. '</p>'
 						);
 
-						$secret_value = (string) $gateway->get_option( 'api_secret' );
+						// The stored secret is never rendered back into the page. It is the
+						// key that signs webhooks, so echoing it into a value="" attribute
+						// exposes it to anyone who can view the settings page source — any
+						// shop_manager, any browser extension, any admin-side XSS. We only
+						// signal whether one is saved; submitting the field empty keeps it
+						// (see Gateway::validate_api_secret_field).
+						$has_secret   = '' !== (string) $gateway->get_option( 'api_secret' );
+						$secret_hint  = $has_secret
+							? __( 'A secret is saved. Leave blank to keep it, or paste a new one to replace it.', 'allscale-checkout' )
+							: __( 'Find this in your Allscale dashboard → Developers → API keys.', 'allscale-checkout' );
 						self::form_row(
 							__( 'API secret', 'allscale-checkout' ),
 							'<div class="as-secret-wrap">'
 								. '<input type="password" class="regular-text" name="woocommerce_' . esc_attr( Gateway::ID ) . '_api_secret" '
-								. 'value="' . esc_attr( $secret_value ) . '" placeholder="st_live_…" autocomplete="off" data-as-secret-input />'
+								. 'value="" placeholder="' . esc_attr( $has_secret ? '••••••••••••' : 'st_live_…' ) . '" autocomplete="off" data-as-secret-input />'
 								. '<button type="button" class="button button-secondary as-toggle-secret" data-as-toggle-secret>'
 								. esc_html__( 'Show', 'allscale-checkout' )
 								. '</button>'
 								. '</div>'
 								. '<p class="description">'
+								. esc_html( $secret_hint )
+								. ' '
 								. wp_kses(
 									sprintf(
 										/* translators: %s is the URL to allscale.io */

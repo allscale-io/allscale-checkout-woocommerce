@@ -92,6 +92,33 @@ class Gateway extends \WC_Payment_Gateway {
 	}
 
 	/**
+	 * Keep the stored API secret when the field is submitted empty.
+	 *
+	 * The settings page no longer renders the saved secret back into the form
+	 * (it signs webhooks — see Admin::render_settings_page), so an ordinary
+	 * "Save changes" posts an empty field. Without this, saving any unrelated
+	 * setting would wipe the secret and silently break webhook verification.
+	 *
+	 * WC_Settings_API::get_field_value() calls validate_{key}_field() when it
+	 * exists, so this runs on every save of api_secret.
+	 *
+	 * To clear a secret, paste a new one — or reset via the setup wizard.
+	 *
+	 * @param string $key   Field key.
+	 * @param string $value Posted value.
+	 * @return string Value to persist.
+	 */
+	public function validate_api_secret_field( $key, $value ) {
+		$value = trim( (string) $value );
+
+		if ( '' === $value ) {
+			return (string) $this->get_option( 'api_secret' );
+		}
+
+		return $value;
+	}
+
+	/**
 	 * Override WC's generic table render so the section settings page is
 	 * rendered by Admin::render_settings_page (matching the design).
 	 *

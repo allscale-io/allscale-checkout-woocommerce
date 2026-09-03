@@ -3,7 +3,7 @@ Contributors: allscale
 Tags: woocommerce, payment gateway, crypto, usdt, stablecoin, non-custodial
 Requires at least: 5.8
 Tested up to: 6.5
-Stable tag: 0.0.5
+Stable tag: 0.0.6
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -115,6 +115,10 @@ No. Allscale is non-custodial; funds settle directly to your wallet. To refund a
 USD, AUD, CAD, CNY, EUR, GBP, HKD, JPY, SGD. You can also enable **native USDT pricing** for crypto-first stores.
 
 == Changelog ==
+
+= 0.0.6 =
+* **Security hardening**: the saved API secret is no longer rendered back into the settings page HTML. It was previously echoed into the password field's `value=""` attribute, which put the webhook-signing key in the page source for anyone who could open the gateway settings — any `shop_manager`, any browser extension, and any admin-side XSS. The field now renders empty with a masked placeholder and only signals whether a secret is stored.
+* Submitting the API secret field empty now **keeps** the stored secret instead of clearing it, so saving an unrelated setting can no longer silently break webhook verification. Paste a new secret to replace it.
 
 = 0.0.5 =
 * Packaging hygiene: release ZIPs now exclude dev-only content (`.wordpress-org/` marketplace assets, internal `docs/`, dev-facing `README.md`) via a `.distignore` file. v0.0.4 ZIPs accidentally bundled all of that — merchants now get only the runtime code. No code-behavior changes.
