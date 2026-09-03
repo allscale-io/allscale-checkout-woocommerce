@@ -117,8 +117,9 @@ USD, AUD, CAD, CNY, EUR, GBP, HKD, JPY, SGD. You can also enable **native USDT p
 == Changelog ==
 
 = 0.0.6 =
-* **Fix: a payment retry could orphan a paid order.** Every call to `process_payment` (a double-click on Pay, or a retry from the pay-for-order page) created a fresh Allscale intent and overwrote the order's stored intent id. The earlier intent stayed payable on the Allscale side, but a webhook for it no longer matched any order — the merchant received the funds while the order sat in Pending forever. Superseded intent ids are now archived on the order (`_allscale_prior_intent_id`, one row each) and both the webhook lookup and the thank-you page fallback search them.
+* **Fix: payment retries no longer create concurrent payable intents.** Intent inspection and creation now run under an atomic order lock. Active intents reuse their original checkout URL and amount; only terminal no-payment intents may be superseded. Historical intent IDs remain searchable, and a second confirmed intent is flagged in order meta and notes for merchant reconciliation instead of being silently ignored.
 * **Fix: an underpaid order no longer shows "Payment confirmed".** When a CONFIRMED callback arrived with `amount_cents` below the order total, the order was correctly placed on-hold but the stored Allscale status had already been written as Confirmed, so the customer's thank-you page and the admin meta box both showed a green success state. The stored status is now set to Underpaid on that path.
+* **Security hardening: webhook replay and order locks are now atomic.** Database-backed owner tokens replace the transient check-then-set race. Webhook IDs are recorded durably, nonces are claimed only after signature validation, and lock/storage failures return a retryable `503` instead of processing without a lock.
 
 = 0.0.5 =
 * Packaging hygiene: release ZIPs now exclude dev-only content (`.wordpress-org/` marketplace assets, internal `docs/`, dev-facing `README.md`) via a `.distignore` file. v0.0.4 ZIPs accidentally bundled all of that — merchants now get only the runtime code. No code-behavior changes.

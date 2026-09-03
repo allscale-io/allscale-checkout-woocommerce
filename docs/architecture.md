@@ -193,10 +193,13 @@ Before every transition, the mapper short-circuits if the order is already in th
 
 `Order_Locker::with_lock(int $order_id, callable $fn): mixed` acquires a mutex around order state updates. Implementation:
 
-1. If `function_exists('wc_get_order_lock')` (WC 8.6+), use it — it's the canonical primitive.
-2. Otherwise, fall back to a transient-based lock with a 30-second TTL: `allscale_order_lock_{order_id}`.
+1. Hash the order resource name into a private `wp_options` key.
+2. Acquire it with `INSERT IGNORE`; the unique `option_name` index is the cross-worker compare-and-set.
+3. Recover abandoned locks with an owner-checked conditional `UPDATE`, and release with an owner-checked `DELETE` so an expired owner cannot delete its successor's lock.
+4. Embed expiry in the owner value and remove expired rows on the next lock-using request, independently of the site's object-cache backend.
+5. Wait up to three seconds. If acquisition fails, do not invoke the callback; webhook callers return `503` so Allscale can retry.
 
-The lock guards against the race between webhook and return-URL fallback (issue 3). Combined with the mapper's status short-circuit, duplicate order notes and double-complete attempts are prevented.
+The same 120-second order lock guards intent creation, webhook handling, and the return-URL fallback. Combined with durable processed-webhook IDs and the mapper's status short-circuit, it prevents duplicate intents, duplicate notes, and concurrent payment completion.
 
 ### 4.9 Webhook handler (`includes/class-webhook-handler.php`)
 
@@ -208,12 +211,12 @@ Sequence:
 3. If secret is empty, return 503 with a logged warning.
 4. Read required headers: `X-Webhook-Id`, `X-Webhook-Timestamp`, `X-Webhook-Nonce`, `X-Webhook-Signature`.
 5. Validate timestamp window (±5 minutes per spec).
-6. Check nonce against the transient store; if seen, return 200 "Already processed" (idempotent, consistent with current behavior).
-7. Verify signature via `Signer::verify_webhook`.
-8. Parse body; verify `payload.webhook_id === X-Webhook-Id` header (new check per spec).
-9. Find the order by `_allscale_intent_id` meta.
-10. `Order_Locker::with_lock(...)` → `Status_Mapper::apply(...)`.
-11. Mark nonce as used (10-minute TTL).
+6. Verify signature via `Signer::verify_webhook` before claiming any untrusted identifier.
+7. Parse body; verify `payload.webhook_id === X-Webhook-Id` header.
+8. Find the order by the current, superseded, or legacy intent-id meta. A missing order returns `503` so a webhook racing intent persistence is retried.
+9. Acquire the atomic order lock. Under that lock, reject a durable `_allscale_processed_webhook_id` duplicate and atomically claim the nonce for 10 minutes.
+10. `Status_Mapper::apply(...)`, persist the processed webhook ID, then run the post-process action.
+11. If processing or lock storage fails, release the nonce claim where possible and return `503`; only completed or proven-duplicate events receive `200`.
 12. Update the `allscale_last_webhook_at` option to `time()`.
 13. If this is the first webhook ever received (option was previously empty), set `allscale_first_webhook_at` to trigger the celebratory admin notice.
 14. Return 200 OK.
@@ -240,9 +243,11 @@ Settings fields (matching the design brief):
 4. Build `Intent_Request` with top-level `redirect_url = $this->get_return_url($order)` (no more `extra.return_url`).
 5. Either send `currency` enum + cents, or `stable_coin: 1` + cents if `use_stable_coin_pricing` is enabled.
 6. Send `user_id` and `user_name` from the WC order's billing fields when present.
-7. Call `Api_Client::create_intent()`.
-8. On success, persist `_allscale_intent_id` to order meta and redirect to `checkout_url`.
-9. On failure, surface a friendly error via `wc_add_notice()` mapped from the Allscale error code through `Error_Messages`.
+7. Acquire the atomic order lock before inspecting or creating an intent.
+8. If an active intent already exists, verify its amount and reuse its saved/API-provided `checkout_url`. Confirmed intents redirect to the return URL for reconciliation; underpaid/refund states require merchant review.
+9. Only terminal no-payment states (failed, rejected, canceled, or timed out) may be superseded. Archive their IDs before storing the replacement.
+10. Call `Api_Client::create_intent()` only when no reusable intent exists.
+11. On success, persist `_allscale_intent_id`, `_allscale_checkout_url`, and `_allscale_intent_amount_cents`, then redirect. On failure, surface a friendly error.
 
 `handle_thankyou_page($order_id)` (the return-URL fallback):
 1. If order already paid, return.

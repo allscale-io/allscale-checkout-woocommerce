@@ -20,6 +20,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Status_Mapper {
 
 	const META_INTENT_ID            = '_allscale_intent_id';
+	const META_CHECKOUT_URL         = '_allscale_checkout_url';
+	const META_INTENT_AMOUNT_CENTS  = '_allscale_intent_amount_cents';
+	const META_SETTLED_INTENT_ID    = '_allscale_settled_intent_id';
+	const META_DUPLICATE_PAYMENT    = '_allscale_duplicate_payment_intent_id';
+	const META_PROCESSED_WEBHOOK_ID = '_allscale_processed_webhook_id';
 	// Non-unique meta: one row per superseded intent. When the customer
 	// re-enters process_payment (double-click, pay-for-order retry) a fresh
 	// intent replaces META_INTENT_ID, but the old one is still live on the
@@ -43,13 +48,22 @@ final class Status_Mapper {
 	 * @param \WC_Order $order   The order.
 	 * @param int       $status  Allscale status integer.
 	 * @param array     $context Extra fields from the webhook payload or details endpoint.
-	 *                           Keys: tx_hash, paid_cents, payment_method_type, chain_id,
+	 *                           Keys: intent_id, tx_hash, paid_cents, payment_method_type, chain_id,
 	 *                           actual_paid_amount, service_fee_amount, net_income_amount,
 	 *                           coin_symbol, amount_coins, source ('webhook'|'return_url').
 	 * @param Logger    $logger  Logger.
 	 */
 	public static function apply( \WC_Order $order, $status, array $context, Logger $logger ) {
 		$status = (int) $status;
+		$incoming_intent_id = isset( $context['intent_id'] ) ? (string) $context['intent_id'] : '';
+
+		// A second confirmed intent means funds arrived twice. Never run payment
+		// completion again, but persist an explicit reconciliation signal instead
+		// of silently discarding the later settlement as "already paid".
+		if ( $status === Status_Codes::CONFIRMED && $order->is_paid() ) {
+			self::record_duplicate_payment( $order, $incoming_intent_id, $context, $logger );
+			return;
+		}
 
 		// Don't touch terminally-finished orders.
 		// `cancelled` is included: if an order was auto-cancelled by WC's
@@ -246,6 +260,12 @@ final class Status_Mapper {
 			return;
 		}
 
+		$intent_id = isset( $context['intent_id'] ) ? (string) $context['intent_id'] : '';
+		if ( $intent_id !== '' ) {
+			$order->update_meta_data( self::META_SETTLED_INTENT_ID, $intent_id );
+			$order->save();
+		}
+
 		$order->payment_complete( (string) $tx_hash );
 		$order->add_order_note(
 			$tx_hash
@@ -256,6 +276,73 @@ final class Status_Mapper {
 				)
 				: __( 'Allscale payment confirmed.', 'allscale-checkout' )
 		);
+	}
+
+	/**
+	 * Record a second confirmed intent on an order that is already paid.
+	 *
+	 * @param \WC_Order $order              Paid order.
+	 * @param string    $incoming_intent_id Incoming intent id.
+	 * @param array     $context            Payment context.
+	 * @param Logger    $logger             Logger.
+	 */
+	private static function record_duplicate_payment( \WC_Order $order, $incoming_intent_id, array $context, Logger $logger ) {
+		$settled_intent_id = (string) $order->get_meta( self::META_SETTLED_INTENT_ID );
+		$existing_tx_hash  = (string) $order->get_meta( self::META_TX_HASH );
+		$incoming_tx_hash  = isset( $context['tx_hash'] ) ? (string) $context['tx_hash'] : '';
+
+		$is_same_intent = $incoming_intent_id !== '' && $settled_intent_id !== '' && $incoming_intent_id === $settled_intent_id;
+		$is_same_tx     = $incoming_tx_hash !== '' && $existing_tx_hash !== '' && $incoming_tx_hash === $existing_tx_hash;
+		if ( $is_same_intent || $is_same_tx ) {
+			$logger->debug( 'Order already paid; duplicate confirmation ignored', array( 'order_id' => $order->get_id() ) );
+			return;
+		}
+
+		// Older orders may not have META_SETTLED_INTENT_ID. If neither identifier
+		// can prove this is a different payment, keep the existing paid state and
+		// avoid a false merchant alert.
+		if ( $settled_intent_id === '' && ( $existing_tx_hash === '' || $incoming_tx_hash === '' ) ) {
+			$logger->warning(
+				'Could not determine whether confirmation on paid order is a duplicate settlement',
+				array(
+					'order_id'  => $order->get_id(),
+					'intent_id' => $incoming_intent_id,
+				)
+			);
+			return;
+		}
+
+		$recorded = array();
+		foreach ( (array) $order->get_meta( self::META_DUPLICATE_PAYMENT, false ) as $meta ) {
+			$recorded[] = is_object( $meta ) && isset( $meta->value ) ? (string) $meta->value : (string) $meta;
+		}
+		if ( $incoming_intent_id !== '' && in_array( $incoming_intent_id, $recorded, true ) ) {
+			return;
+		}
+
+		if ( $incoming_intent_id !== '' ) {
+			$order->add_meta_data( self::META_DUPLICATE_PAYMENT, $incoming_intent_id, false );
+		}
+		$order->add_order_note(
+			sprintf(
+				/* translators: 1: Allscale intent id, 2: transaction hash */
+				__( 'Allscale: possible duplicate payment received. Intent: %1$s; transaction: %2$s. Review and refund manually if necessary.', 'allscale-checkout' ),
+				$incoming_intent_id !== '' ? $incoming_intent_id : __( 'unknown', 'allscale-checkout' ),
+				$incoming_tx_hash !== '' ? $incoming_tx_hash : __( 'unknown', 'allscale-checkout' )
+			)
+		);
+		$order->save();
+
+		$logger->warning(
+			'Duplicate payment settlement detected',
+			array(
+				'order_id'          => $order->get_id(),
+				'settled_intent_id' => $settled_intent_id,
+				'incoming_intent_id' => $incoming_intent_id,
+				'tx_hash'           => $incoming_tx_hash,
+			)
+		);
+		do_action( 'allscale_checkout_duplicate_payment_detected', $order, $context );
 	}
 
 	/**

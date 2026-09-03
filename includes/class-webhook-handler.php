@@ -75,14 +75,6 @@ final class Webhook_Handler {
 			exit( 'Webhook timestamp expired' );
 		}
 
-		// Idempotency: skip if we've already processed this nonce.
-		$nonce_key = 'allscale_nonce_' . md5( $nonce );
-		if ( get_transient( $nonce_key ) ) {
-			$this->logger->debug( 'Webhook nonce already processed', array( 'webhook_id' => $webhook_id ) );
-			status_header( 200 );
-			exit( 'Already processed' );
-		}
-
 		$path = isset( $_SERVER['REQUEST_URI'] )
 			? (string) wp_parse_url( esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ), PHP_URL_PATH )
 			: '';
@@ -105,8 +97,6 @@ final class Webhook_Handler {
 			exit( 'Invalid signature' );
 		}
 
-		set_transient( $nonce_key, time(), self::NONCE_TTL_SECONDS );
-
 		$payload = json_decode( (string) $raw_body, true );
 		if ( ! is_array( $payload ) ) {
 			$this->logger->warning( 'Webhook body not valid JSON', array( 'webhook_id' => $webhook_id ) );
@@ -127,7 +117,10 @@ final class Webhook_Handler {
 			exit( 'Webhook id mismatch' );
 		}
 
-		$this->process( $payload );
+		if ( ! $this->process( $payload, $nonce, $webhook_id ) ) {
+			status_header( 503 );
+			exit( 'Webhook processing deferred' );
+		}
 
 		// Health signals.
 		update_option( Plugin::OPT_LAST_WEBHOOK_AT, time(), false );
@@ -142,22 +135,25 @@ final class Webhook_Handler {
 	/**
 	 * Find the matching order and apply the status.
 	 *
-	 * @param array $payload Decoded webhook body.
+	 * @param array  $payload    Decoded webhook body.
+	 * @param string $nonce      Verified webhook nonce.
+	 * @param string $webhook_id Verified webhook id.
+	 * @return bool Whether the webhook can be acknowledged.
 	 */
-	private function process( array $payload ) {
+	private function process( array $payload, $nonce, $webhook_id ) {
 		$intent_id = isset( $payload['all_scale_checkout_intent_id'] )
 			? sanitize_text_field( (string) $payload['all_scale_checkout_intent_id'] )
 			: '';
 
 		if ( $intent_id === '' ) {
 			$this->logger->warning( 'Webhook payload missing checkout intent id' );
-			return;
+			return true;
 		}
 
 		$order = self::find_order_by_intent( $intent_id );
 		if ( ! $order ) {
 			$this->logger->warning( 'No order matches webhook intent id', array( 'intent_id' => $intent_id ) );
-			return;
+			return false;
 		}
 
 		// Webhooks fire only on successful payment per the spec; if a status
@@ -165,6 +161,7 @@ final class Webhook_Handler {
 		$status = isset( $payload['status'] ) ? (int) $payload['status'] : Status_Codes::CONFIRMED;
 
 		$context = array(
+			'intent_id'          => $intent_id,
 			'tx_hash'             => isset( $payload['tx_hash'] ) ? (string) $payload['tx_hash'] : '',
 			'paid_cents'          => isset( $payload['amount_cents'] ) ? (int) $payload['amount_cents'] : 0,
 			'payment_method_type' => isset( $payload['payment_method_type'] ) ? (int) $payload['payment_method_type'] : null,
@@ -174,18 +171,70 @@ final class Webhook_Handler {
 			'source'              => 'webhook',
 		);
 
-		Order_Locker::with_lock(
-			$order->get_id(),
-			function () use ( $order, $status, $context ) {
-				$fresh = wc_get_order( $order->get_id() );
-				if ( $fresh ) {
-					Status_Mapper::apply( $fresh, $status, $context, $this->logger );
-				}
-			},
-			$this->logger
-		);
+		try {
+			$result = Order_Locker::with_lock(
+				$order->get_id(),
+				function () use ( $order, $status, $context, $payload, $nonce, $webhook_id ) {
+					$fresh = wc_get_order( $order->get_id() );
+					if ( ! $fresh ) {
+						return 'retry';
+					}
 
-		do_action( 'allscale_checkout_webhook_after_process', $order, $payload );
+					$processed_webhooks = array();
+					foreach ( (array) $fresh->get_meta( Status_Mapper::META_PROCESSED_WEBHOOK_ID, false ) as $meta ) {
+						$processed_webhooks[] = is_object( $meta ) && isset( $meta->value ) ? (string) $meta->value : (string) $meta;
+					}
+					if ( in_array( $webhook_id, $processed_webhooks, true ) ) {
+						$this->logger->debug( 'Webhook id already processed', array( 'webhook_id' => $webhook_id ) );
+						return 'already_processed';
+					}
+
+					// Claim only after signature and payload validation, and while the
+					// order lock is held. A concurrent retry therefore waits for the
+					// first request to finish before deciding it was already processed.
+					$nonce_claim = Atomic_Lock::acquire(
+						'webhook-nonce:' . hash( 'sha256', $nonce ),
+						self::NONCE_TTL_SECONDS
+					);
+					if ( $nonce_claim === false ) {
+						$this->logger->debug( 'Webhook nonce already processed', array( 'webhook_id' => $webhook_id ) );
+						return 'already_processed';
+					}
+					if ( $nonce_claim === null ) {
+						$this->logger->error( 'Webhook nonce claim storage failed', array( 'webhook_id' => $webhook_id ) );
+						return 'retry';
+					}
+
+					try {
+						Status_Mapper::apply( $fresh, $status, $context, $this->logger );
+						$fresh->add_meta_data( Status_Mapper::META_PROCESSED_WEBHOOK_ID, $webhook_id, false );
+						$fresh->save();
+						do_action( 'allscale_checkout_webhook_after_process', $fresh, $payload );
+					} catch ( \Throwable $error ) {
+						// Do not burn the nonce when processing failed. A provider retry
+						// must be able to claim and process it again.
+						Atomic_Lock::release( $nonce_claim );
+						throw $error;
+					}
+
+					// Successful nonce claims intentionally remain until their TTL.
+					return 'processed';
+				},
+				$this->logger
+			);
+		} catch ( \Throwable $error ) {
+			$this->logger->error(
+				'Webhook processing failed; requesting retry',
+				array(
+					'webhook_id' => $webhook_id,
+					'order_id'   => $order->get_id(),
+					'error'      => $error->getMessage(),
+				)
+			);
+			return false;
+		}
+
+		return $result === 'processed' || $result === 'already_processed';
 	}
 
 	/**

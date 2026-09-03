@@ -137,6 +137,51 @@ class Gateway extends \WC_Payment_Gateway {
 			return array( 'result' => 'failure' );
 		}
 
+		$logger = new Logger( 'yes' === $this->get_option( 'debug_logging' ) );
+		$result = Order_Locker::with_lock(
+			$order->get_id(),
+			function () use ( $order_id, $logger ) {
+				return $this->process_payment_locked( $order_id, $logger );
+			},
+			$logger
+		);
+
+		if ( $result === null ) {
+			wc_add_notice(
+				__( 'This payment is already being initialized. Please try again in a moment.', 'allscale-checkout' ),
+				'error'
+			);
+			return array( 'result' => 'failure' );
+		}
+
+		if ( isset( $result['result'] ) && $result['result'] === 'success' && WC()->cart ) {
+			WC()->cart->empty_cart();
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Create or reuse an intent while the order lock is held.
+	 *
+	 * @param int    $order_id WooCommerce order id.
+	 * @param Logger $logger   Logger.
+	 * @return array {result: string, redirect?: string}
+	 */
+	private function process_payment_locked( $order_id, Logger $logger ) {
+		$order = wc_get_order( $order_id );
+		if ( ! $order instanceof \WC_Order ) {
+			wc_add_notice( __( 'Order not found.', 'allscale-checkout' ), 'error' );
+			return array( 'result' => 'failure' );
+		}
+
+		if ( $order->is_paid() ) {
+			return array(
+				'result'   => 'success',
+				'redirect' => $this->get_return_url( $order ),
+			);
+		}
+
 		$amount_cents = (int) round( (float) $order->get_total() * 100 );
 		// Allscale's documented minimum is 0.10 USDT. We can't precisely
 		// convert fiat → USDT without a live rate, so this is a sanity floor;
@@ -194,8 +239,11 @@ class Gateway extends \WC_Payment_Gateway {
 
 		$payload = apply_filters( 'allscale_checkout_intent_request_payload', $payload, $order );
 
-		$logger = new Logger( 'yes' === $this->get_option( 'debug_logging' ) );
-		$api    = new Api_Client( (string) $this->get_option( 'api_key' ), (string) $this->get_option( 'api_secret' ), $logger );
+		$api             = new Api_Client( (string) $this->get_option( 'api_key' ), (string) $this->get_option( 'api_secret' ), $logger );
+		$existing_result = $this->existing_intent_result( $order, $api, $amount_cents, $logger );
+		if ( is_array( $existing_result ) ) {
+			return $existing_result;
+		}
 
 		$result = $api->create_intent( $payload );
 
@@ -244,12 +292,157 @@ class Gateway extends \WC_Payment_Gateway {
 			);
 		}
 		$order->update_meta_data( Status_Mapper::META_INTENT_ID, $intent_id );
+		$order->update_meta_data( Status_Mapper::META_CHECKOUT_URL, $checkout_url );
+		$order->update_meta_data( Status_Mapper::META_INTENT_AMOUNT_CENTS, $amount_cents );
 		$order->save();
 
-		// Don't redundantly set status — new orders are already 'pending'.
-		// We do let WC clear the cart and redirect.
+		return array(
+			'result'   => 'success',
+			'redirect' => $checkout_url,
+		);
+	}
 
-		WC()->cart->empty_cart();
+	/**
+	 * Reuse a non-terminal intent instead of creating a second payable intent.
+	 *
+	 * A false return means there is no existing intent, or the existing intent
+	 * ended without receiving funds and can safely be superseded.
+	 *
+	 * @param \WC_Order  $order        Order being paid.
+	 * @param Api_Client $api          Allscale API client.
+	 * @param int        $amount_cents Current order total in cents.
+	 * @param Logger     $logger       Logger.
+	 * @return array|false Checkout result, or false when a new intent may be created.
+	 */
+	private function existing_intent_result( \WC_Order $order, Api_Client $api, $amount_cents, Logger $logger ) {
+		$intent_id = (string) $order->get_meta( Status_Mapper::META_INTENT_ID );
+		if ( $intent_id === '' ) {
+			return false;
+		}
+
+		$stored_url    = (string) $order->get_meta( Status_Mapper::META_CHECKOUT_URL );
+		$stored_amount = (int) $order->get_meta( Status_Mapper::META_INTENT_AMOUNT_CENTS );
+		if ( $stored_amount > 0 && $stored_amount !== (int) $amount_cents ) {
+			$logger->error(
+				'Existing intent amount differs from the current order total',
+				array(
+					'order_id'       => $order->get_id(),
+					'intent_id'      => $intent_id,
+					'intent_amount'  => $stored_amount,
+					'current_amount' => (int) $amount_cents,
+				)
+			);
+			wc_add_notice(
+				__( 'This order already has a payment for a different amount. Please contact the store.', 'allscale-checkout' ),
+				'error'
+			);
+			return array( 'result' => 'failure' );
+		}
+
+		$details = $api->get_intent_details( $intent_id );
+
+		if ( ! $details->success || ! is_array( $details->data ) ) {
+			if ( $stored_url !== '' ) {
+				$logger->warning(
+					'Could not refresh existing intent; reusing its checkout URL',
+					array(
+						'order_id' => $order->get_id(),
+						'intent_id' => $intent_id,
+						'code'      => $details->error_code,
+					)
+				);
+				return array(
+					'result'   => 'success',
+					'redirect' => $stored_url,
+				);
+			}
+
+			$logger->warning(
+				'Existing intent could not be checked safely',
+				array(
+					'order_id' => $order->get_id(),
+					'intent_id' => $intent_id,
+					'code'      => $details->error_code,
+				)
+			);
+			wc_add_notice( Error_Messages::for_customer( $details->error_code ), 'error' );
+			return array( 'result' => 'failure' );
+		}
+
+		$data          = $details->data;
+		$status        = isset( $data['status'] ) ? (int) $data['status'] : 0;
+		$intent_amount = isset( $data['amount_cents'] ) ? (int) $data['amount_cents'] : $stored_amount;
+		$details_url   = isset( $data['checkout_url'] ) ? (string) $data['checkout_url'] : '';
+		$checkout_url  = $details_url !== '' ? $details_url : $stored_url;
+
+		if ( $intent_amount > 0 && $intent_amount !== (int) $amount_cents ) {
+			$logger->error(
+				'Existing intent amount differs from the current order total',
+				array(
+					'order_id'       => $order->get_id(),
+					'intent_id'      => $intent_id,
+					'intent_amount'  => $intent_amount,
+					'current_amount' => (int) $amount_cents,
+				)
+			);
+			wc_add_notice(
+				__( 'This order already has a payment for a different amount. Please contact the store.', 'allscale-checkout' ),
+				'error'
+			);
+			return array( 'result' => 'failure' );
+		}
+
+		if ( in_array( $status, array( Status_Codes::FAILED, Status_Codes::REJECTED, Status_Codes::CANCELED, Status_Codes::TIMEOUT ), true ) ) {
+			return false;
+		}
+
+		if ( $status === Status_Codes::CONFIRMED ) {
+			return array(
+				'result'   => 'success',
+				'redirect' => $this->get_return_url( $order ),
+			);
+		}
+
+		if ( $status === Status_Codes::UNDERPAID || $status === Status_Codes::SEND_BACK ) {
+			wc_add_notice(
+				__( 'A payment already exists for this order and requires store review.', 'allscale-checkout' ),
+				'error'
+			);
+			return array( 'result' => 'failure' );
+		}
+
+		if ( $checkout_url === '' ) {
+			$logger->warning(
+				'Existing active intent has no reusable checkout URL',
+				array(
+					'order_id' => $order->get_id(),
+					'intent_id' => $intent_id,
+					'status'    => $status,
+				)
+			);
+			wc_add_notice(
+				__( 'Your existing payment is still active. Please try again in a moment.', 'allscale-checkout' ),
+				'error'
+			);
+			return array( 'result' => 'failure' );
+		}
+
+		if ( $stored_url !== $checkout_url || $stored_amount !== $intent_amount ) {
+			$order->update_meta_data( Status_Mapper::META_CHECKOUT_URL, $checkout_url );
+			if ( $intent_amount > 0 ) {
+				$order->update_meta_data( Status_Mapper::META_INTENT_AMOUNT_CENTS, $intent_amount );
+			}
+			$order->save();
+		}
+
+		$logger->info(
+			'Reusing existing checkout intent',
+			array(
+				'order_id' => $order->get_id(),
+				'intent_id' => $intent_id,
+				'status'    => $status,
+			)
+		);
 
 		return array(
 			'result'   => 'success',
@@ -288,6 +481,7 @@ class Gateway extends \WC_Payment_Gateway {
 					$status = isset( $data['status'] ) ? (int) $data['status'] : 0;
 					if ( $status !== 0 ) {
 						$context = array(
+							'intent_id'          => $intent_id,
 							'tx_hash'             => isset( $data['tx_hash'] ) ? (string) $data['tx_hash'] : '',
 							'paid_cents'          => isset( $data['amount_cents'] ) ? (int) $data['amount_cents'] : 0,
 							'payment_method_type' => isset( $data['payment_method_type'] ) ? (int) $data['payment_method_type'] : null,

@@ -35,6 +35,7 @@ require_once ALLSCALE_CHECKOUT_PATH . 'includes/class-logger.php';
 require_once ALLSCALE_CHECKOUT_PATH . 'includes/class-error-messages.php';
 require_once ALLSCALE_CHECKOUT_PATH . 'includes/class-api-result.php';
 require_once ALLSCALE_CHECKOUT_PATH . 'includes/class-api-client.php';
+require_once ALLSCALE_CHECKOUT_PATH . 'includes/class-atomic-lock.php';
 require_once ALLSCALE_CHECKOUT_PATH . 'includes/class-order-locker.php';
 require_once ALLSCALE_CHECKOUT_PATH . 'includes/class-status-mapper.php';
 require_once ALLSCALE_CHECKOUT_PATH . 'includes/class-webhook-handler.php';
