@@ -29,7 +29,7 @@ A WordPress plugin (built as a WooCommerce payment gateway) that lets merchants 
 
 The plugin confirms every payment via two independent paths so an order never gets stuck:
 
-- **Webhook (server-to-server)** — Allscale's primary delivery channel. Verified with HMAC-SHA256 and nonce de-duplication. Works even if the customer closes their browser after paying.
+- **Webhook (server-to-server)** — Allscale's primary delivery channel. Verified with HMAC-SHA256, atomic nonce claims, and durable webhook-ID de-duplication. Works even if the customer closes their browser after paying.
 - **Return-URL fallback** — When the customer lands on the thank-you page, the plugin asks the Allscale API for the current intent details and reconciles the order. Ensures the buyer sees "Payment confirmed" immediately even if the webhook is briefly delayed.
 
 Both paths share a single status-mapping decision table and run inside an order lock, so they never duplicate notes or double-complete an order.
@@ -304,6 +304,8 @@ Two filter / action hooks are exposed for third-party code:
 
 - **`allscale_checkout_intent_request_payload`** (filter) — Modify the JSON body sent to `POST /v1/checkout_intents/` before signing. Receives the assembled payload array and the `WC_Order`. Use this to add custom metadata, override `extra`, or inject store-specific fields.
 - **`allscale_checkout_webhook_after_process`** (action) — Fires after the plugin has applied a verified Allscale webhook to the order. Receives the `WC_Order` and the decoded webhook payload array. Use this to trigger custom side effects (notify Slack, sync to an external system, etc.).
+- **`allscale_checkout_duplicate_payment_detected`** (action) — Fires when a different Allscale intent confirms after the order is already paid. Receives the `WC_Order` and normalized payment context so reconciliation tooling can alert the merchant.
+- **`allscale_checkout_late_payment_detected`** (action) — Fires when payment confirms after WooCommerce has cancelled the order. The plugin records the payment but deliberately does not restore or fulfil the order automatically.
 
 ### Order meta keys
 
@@ -312,6 +314,13 @@ If you query or display Allscale data elsewhere, the canonical meta keys are:
 | Key | Meaning |
 |---|---|
 | `_allscale_intent_id` | Allscale checkout intent ID |
+| `_allscale_prior_intent_id` | Superseded intent IDs, one meta row per ID |
+| `_allscale_checkout_url` | Checkout URL for safe intent reuse |
+| `_allscale_intent_amount_cents` | Order amount bound to the current intent |
+| `_allscale_settled_intent_id` | Intent that first completed the order |
+| `_allscale_duplicate_payment_intent_id` | Additional confirmed intents requiring reconciliation |
+| `_allscale_late_payment_intent_id` | Intents paid after WooCommerce cancelled the order |
+| `_allscale_processed_webhook_id` | Durable webhook idempotency records |
 | `_allscale_status` | Latest Allscale status integer (see `Status_Codes`) |
 | `_allscale_tx_hash` | On-chain transaction hash |
 | `_allscale_chain_id` | EIP-155 chain ID |

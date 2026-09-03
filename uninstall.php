@@ -30,5 +30,11 @@ delete_transient( 'allscale_settings_save_notice' );
 delete_transient( 'allscale_wizard_error' );
 delete_transient( 'allscale_do_activation_redirect' );
 
-// Best-effort: clean up nonce dedupe transients. There's no WP API to bulk
-// delete by prefix, so we leave them to expire naturally.
+// Remove database-backed lock and replay-claim rows.
+global $wpdb;
+$wpdb->query(
+	$wpdb->prepare(
+		"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
+		$wpdb->esc_like( 'allscale_lock_' ) . '%'
+	)
+);

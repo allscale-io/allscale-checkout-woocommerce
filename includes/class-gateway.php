@@ -137,6 +137,51 @@ class Gateway extends \WC_Payment_Gateway {
 			return array( 'result' => 'failure' );
 		}
 
+		$logger = new Logger( 'yes' === $this->get_option( 'debug_logging' ) );
+		$result = Order_Locker::with_lock(
+			$order->get_id(),
+			function () use ( $order_id, $logger ) {
+				return $this->process_payment_locked( $order_id, $logger );
+			},
+			$logger
+		);
+
+		if ( $result === null ) {
+			wc_add_notice(
+				__( 'This payment is already being initialized. Please try again in a moment.', 'allscale-checkout' ),
+				'error'
+			);
+			return array( 'result' => 'failure' );
+		}
+
+		if ( isset( $result['result'] ) && $result['result'] === 'success' && WC()->cart ) {
+			WC()->cart->empty_cart();
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Create or reuse an intent while the order lock is held.
+	 *
+	 * @param int    $order_id WooCommerce order id.
+	 * @param Logger $logger   Logger.
+	 * @return array {result: string, redirect?: string}
+	 */
+	private function process_payment_locked( $order_id, Logger $logger ) {
+		$order = wc_get_order( $order_id );
+		if ( ! $order instanceof \WC_Order ) {
+			wc_add_notice( __( 'Order not found.', 'allscale-checkout' ), 'error' );
+			return array( 'result' => 'failure' );
+		}
+
+		if ( $order->is_paid() ) {
+			return array(
+				'result'   => 'success',
+				'redirect' => $this->get_return_url( $order ),
+			);
+		}
+
 		$amount_cents = (int) round( (float) $order->get_total() * 100 );
 		// Allscale's documented minimum is 0.10 USDT. We can't precisely
 		// convert fiat → USDT without a live rate, so this is a sanity floor;
@@ -194,8 +239,11 @@ class Gateway extends \WC_Payment_Gateway {
 
 		$payload = apply_filters( 'allscale_checkout_intent_request_payload', $payload, $order );
 
-		$logger = new Logger( 'yes' === $this->get_option( 'debug_logging' ) );
-		$api    = new Api_Client( (string) $this->get_option( 'api_key' ), (string) $this->get_option( 'api_secret' ), $logger );
+		$api             = new Api_Client( (string) $this->get_option( 'api_key' ), (string) $this->get_option( 'api_secret' ), $logger );
+		$existing_result = $this->existing_intent_result( $order, $api, $amount_cents, $logger );
+		if ( is_array( $existing_result ) ) {
+			return $existing_result;
+		}
 
 		$result = $api->create_intent( $payload );
 
@@ -226,13 +274,175 @@ class Gateway extends \WC_Payment_Gateway {
 			return array( 'result' => 'failure' );
 		}
 
+		// A retry (double-click, pay-for-order) reaches here with an intent
+		// already on the order. That intent is still live on Allscale and the
+		// customer may still pay it, so archive it rather than overwrite it —
+		// Webhook_Handler::find_order_by_intent and handle_thankyou both look
+		// through the archived ids.
+		$previous_intent = (string) $order->get_meta( Status_Mapper::META_INTENT_ID );
+		if ( $previous_intent !== '' && $previous_intent !== $intent_id ) {
+			$order->add_meta_data( Status_Mapper::META_PRIOR_INTENT_ID, $previous_intent, false );
+			$logger->info(
+				'Superseding an existing checkout intent',
+				array(
+					'order_id'   => $order->get_id(),
+					'previous'   => $previous_intent,
+					'new'        => $intent_id,
+				)
+			);
+		}
 		$order->update_meta_data( Status_Mapper::META_INTENT_ID, $intent_id );
+		$order->update_meta_data( Status_Mapper::META_CHECKOUT_URL, $checkout_url );
+		$order->update_meta_data( Status_Mapper::META_INTENT_AMOUNT_CENTS, $amount_cents );
 		$order->save();
 
-		// Don't redundantly set status — new orders are already 'pending'.
-		// We do let WC clear the cart and redirect.
+		return array(
+			'result'   => 'success',
+			'redirect' => $checkout_url,
+		);
+	}
 
-		WC()->cart->empty_cart();
+	/**
+	 * Reuse a non-terminal intent instead of creating a second payable intent.
+	 *
+	 * A false return means there is no existing intent, or the existing intent
+	 * ended without receiving funds and can safely be superseded.
+	 *
+	 * @param \WC_Order  $order        Order being paid.
+	 * @param Api_Client $api          Allscale API client.
+	 * @param int        $amount_cents Current order total in cents.
+	 * @param Logger     $logger       Logger.
+	 * @return array|false Checkout result, or false when a new intent may be created.
+	 */
+	private function existing_intent_result( \WC_Order $order, Api_Client $api, $amount_cents, Logger $logger ) {
+		$intent_id = (string) $order->get_meta( Status_Mapper::META_INTENT_ID );
+		if ( $intent_id === '' ) {
+			return false;
+		}
+
+		$stored_url    = (string) $order->get_meta( Status_Mapper::META_CHECKOUT_URL );
+		$stored_amount = (int) $order->get_meta( Status_Mapper::META_INTENT_AMOUNT_CENTS );
+		if ( $stored_amount > 0 && $stored_amount !== (int) $amount_cents ) {
+			$logger->error(
+				'Existing intent amount differs from the current order total',
+				array(
+					'order_id'       => $order->get_id(),
+					'intent_id'      => $intent_id,
+					'intent_amount'  => $stored_amount,
+					'current_amount' => (int) $amount_cents,
+				)
+			);
+			wc_add_notice(
+				__( 'This order already has a payment for a different amount. Please contact the store.', 'allscale-checkout' ),
+				'error'
+			);
+			return array( 'result' => 'failure' );
+		}
+
+		$details = $api->get_intent_details( $intent_id );
+
+		if ( ! $details->success || ! is_array( $details->data ) ) {
+			if ( $stored_url !== '' ) {
+				$logger->warning(
+					'Could not refresh existing intent; reusing its checkout URL',
+					array(
+						'order_id' => $order->get_id(),
+						'intent_id' => $intent_id,
+						'code'      => $details->error_code,
+					)
+				);
+				return array(
+					'result'   => 'success',
+					'redirect' => $stored_url,
+				);
+			}
+
+			$logger->warning(
+				'Existing intent could not be checked safely',
+				array(
+					'order_id' => $order->get_id(),
+					'intent_id' => $intent_id,
+					'code'      => $details->error_code,
+				)
+			);
+			wc_add_notice( Error_Messages::for_customer( $details->error_code ), 'error' );
+			return array( 'result' => 'failure' );
+		}
+
+		$data          = $details->data;
+		$status        = isset( $data['status'] ) ? (int) $data['status'] : 0;
+		$intent_amount = isset( $data['amount_cents'] ) ? (int) $data['amount_cents'] : $stored_amount;
+		$details_url   = isset( $data['checkout_url'] ) ? (string) $data['checkout_url'] : '';
+		$checkout_url  = $details_url !== '' ? $details_url : $stored_url;
+
+		if ( $intent_amount > 0 && $intent_amount !== (int) $amount_cents ) {
+			$logger->error(
+				'Existing intent amount differs from the current order total',
+				array(
+					'order_id'       => $order->get_id(),
+					'intent_id'      => $intent_id,
+					'intent_amount'  => $intent_amount,
+					'current_amount' => (int) $amount_cents,
+				)
+			);
+			wc_add_notice(
+				__( 'This order already has a payment for a different amount. Please contact the store.', 'allscale-checkout' ),
+				'error'
+			);
+			return array( 'result' => 'failure' );
+		}
+
+		if ( in_array( $status, array( Status_Codes::FAILED, Status_Codes::REJECTED, Status_Codes::CANCELED, Status_Codes::TIMEOUT ), true ) ) {
+			return false;
+		}
+
+		if ( $status === Status_Codes::CONFIRMED ) {
+			return array(
+				'result'   => 'success',
+				'redirect' => $this->get_return_url( $order ),
+			);
+		}
+
+		if ( $status === Status_Codes::UNDERPAID || $status === Status_Codes::SEND_BACK ) {
+			wc_add_notice(
+				__( 'A payment already exists for this order and requires store review.', 'allscale-checkout' ),
+				'error'
+			);
+			return array( 'result' => 'failure' );
+		}
+
+		if ( $checkout_url === '' ) {
+			$logger->warning(
+				'Existing active intent has no reusable checkout URL',
+				array(
+					'order_id' => $order->get_id(),
+					'intent_id' => $intent_id,
+					'status'    => $status,
+				)
+			);
+			wc_add_notice(
+				__( 'Your existing payment is still active. Please try again in a moment.', 'allscale-checkout' ),
+				'error'
+			);
+			return array( 'result' => 'failure' );
+		}
+
+		if ( $stored_url !== $checkout_url || $stored_amount !== $intent_amount ) {
+			$order->update_meta_data( Status_Mapper::META_CHECKOUT_URL, $checkout_url );
+			if ( $intent_amount > 0 ) {
+				$order->update_meta_data( Status_Mapper::META_INTENT_AMOUNT_CENTS, $intent_amount );
+			}
+			$order->save();
+		}
+
+		$logger->info(
+			'Reusing existing checkout intent',
+			array(
+				'order_id' => $order->get_id(),
+				'intent_id' => $intent_id,
+				'status'    => $status,
+			)
+		);
 
 		return array(
 			'result'   => 'success',
@@ -258,22 +468,20 @@ class Gateway extends \WC_Payment_Gateway {
 		// Only run the API fallback if the order isn't already done. Already-paid
 		// orders (webhook landed in time) still get the status block rendered below.
 		if ( ! $order->is_paid() ) {
-			$intent_id = (string) $order->get_meta( Status_Mapper::META_INTENT_ID );
-			if ( $intent_id === '' ) {
-				// Legacy 0.1.x meta key fallback.
-				$intent_id = (string) $order->get_meta( '_allscale_checkout_intent_id' );
-			}
+			$logger = new Logger( 'yes' === $this->get_option( 'debug_logging' ) );
+			$api    = new Api_Client( (string) $this->get_option( 'api_key' ), (string) $this->get_option( 'api_secret' ), $logger );
 
-			if ( $intent_id !== '' ) {
-				$logger = new Logger( 'yes' === $this->get_option( 'debug_logging' ) );
-				$api    = new Api_Client( (string) $this->get_option( 'api_key' ), (string) $this->get_option( 'api_secret' ), $logger );
-
+			// Current intent first, then any superseded ones (see process_payment).
+			// A customer who paid an earlier intent from a still-open tab gets
+			// recognised here even if the webhook hasn't landed.
+			foreach ( self::intent_ids_for( $order ) as $intent_id ) {
 				$result = $api->get_intent_details( $intent_id );
 				if ( $result->success && is_array( $result->data ) ) {
 					$data   = $result->data;
 					$status = isset( $data['status'] ) ? (int) $data['status'] : 0;
 					if ( $status !== 0 ) {
 						$context = array(
+							'intent_id'          => $intent_id,
 							'tx_hash'             => isset( $data['tx_hash'] ) ? (string) $data['tx_hash'] : '',
 							'paid_cents'          => isset( $data['amount_cents'] ) ? (int) $data['amount_cents'] : 0,
 							'payment_method_type' => isset( $data['payment_method_type'] ) ? (int) $data['payment_method_type'] : null,
@@ -298,6 +506,12 @@ class Gateway extends \WC_Payment_Gateway {
 						);
 					}
 				}
+
+				// Stop at the first intent that settled the order.
+				$refreshed = wc_get_order( $order->get_id() );
+				if ( $refreshed && $refreshed->is_paid() ) {
+					break;
+				}
 			}
 		}
 
@@ -311,14 +525,40 @@ class Gateway extends \WC_Payment_Gateway {
 	}
 
 	/**
+	 * Every Allscale intent id ever attached to the order — current first,
+	 * then superseded ones, then the legacy 0.1.x key.
+	 *
+	 * @param \WC_Order $order Order.
+	 * @return string[] De-duplicated, empty strings removed.
+	 */
+	public static function intent_ids_for( \WC_Order $order ) {
+		$ids   = array();
+		$ids[] = (string) $order->get_meta( Status_Mapper::META_INTENT_ID );
+		foreach ( (array) $order->get_meta( Status_Mapper::META_PRIOR_INTENT_ID, false ) as $meta ) {
+			$ids[] = is_object( $meta ) && isset( $meta->value ) ? (string) $meta->value : (string) $meta;
+		}
+		$ids[] = (string) $order->get_meta( '_allscale_checkout_intent_id' );
+
+		return array_values( array_unique( array_filter( $ids, 'strlen' ) ) );
+	}
+
+	/**
 	 * Render the friendly status block on the order-received page.
 	 *
 	 * @param \WC_Order $order Order.
 	 */
 	private static function render_thankyou_block( \WC_Order $order ) {
-		$status = (int) $order->get_meta( Status_Mapper::META_STATUS );
+		$status           = (int) $order->get_meta( Status_Mapper::META_STATUS );
+		$has_late_payment = ! empty( (array) $order->get_meta( Status_Mapper::META_LATE_PAYMENT, false ) );
 
-		if ( $order->is_paid() || $status === Status_Codes::CONFIRMED ) {
+		if ( $has_late_payment ) {
+			$tone   = 'pending';
+			$bg     = '#fef7e0';
+			$border = '#f9ab00';
+			$title  = __( 'Payment received after order cancellation', 'allscale-checkout' );
+			$body   = __( 'Your payment arrived after this order was cancelled. The store has been notified and must review the order before fulfilment or refund.', 'allscale-checkout' );
+			$sub    = '';
+		} elseif ( $order->is_paid() || $status === Status_Codes::CONFIRMED ) {
 			$tone     = 'confirmed';
 			$bg       = '#e6f4ea';
 			$border   = '#34a853';
