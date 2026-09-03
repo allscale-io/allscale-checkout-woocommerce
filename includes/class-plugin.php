@@ -78,6 +78,8 @@ final class Plugin {
 		$webhook->register();
 
 		add_filter( 'woocommerce_payment_gateways', array( $this, 'register_gateway' ) );
+		add_filter( 'woocommerce_rest_prepare_payment_gateway', array( $this, 'redact_rest_api_secret' ), PHP_INT_MAX, 3 );
+		add_filter( 'woocommerce_gateway_' . Gateway::ID . '_settings_values', array( $this, 'preserve_empty_rest_api_secret' ), 10, 2 );
 		add_action( 'woocommerce_blocks_loaded', array( $this, 'register_blocks_integration' ) );
 
 		Settings_Validator::register();
@@ -108,6 +110,68 @@ final class Plugin {
 	public function register_gateway( $gateways ) {
 		$gateways[] = '\Allscale\Checkout\Gateway';
 		return $gateways;
+	}
+
+	/**
+	 * Remove the webhook-signing secret from WooCommerce REST responses.
+	 *
+	 * WooCommerce includes the stored value of every gateway form field in
+	 * /wc/v2/payment_gateways and /wc/v3/payment_gateways responses, including
+	 * fields whose type is "password". Keep the field metadata so REST clients
+	 * can still submit a replacement, but make its current value write-only.
+	 *
+	 * @param \WP_REST_Response   $response REST response.
+	 * @param \WC_Payment_Gateway $gateway  Payment gateway instance.
+	 * @param \WP_REST_Request    $request  REST request.
+	 * @return \WP_REST_Response
+	 */
+	public function redact_rest_api_secret( $response, $gateway, $request ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed
+		if ( ! $gateway instanceof Gateway || ! $response instanceof \WP_REST_Response ) {
+			return $response;
+		}
+
+		$data = $response->get_data();
+		if ( ! is_array( $data )
+			|| ! isset( $data['settings']['api_secret'] )
+			|| ! is_array( $data['settings']['api_secret'] )
+		) {
+			return $response;
+		}
+
+		$data['settings']['api_secret']['value'] = '';
+		$response->set_data( $data );
+
+		return $response;
+	}
+
+	/**
+	 * Preserve the stored secret when a REST settings update sends it empty.
+	 *
+	 * REST clients commonly submit the complete settings object returned by a
+	 * GET. Because redact_rest_api_secret() returns an empty value, accepting
+	 * that value literally would erase the secret while changing an unrelated
+	 * setting. A non-empty value still replaces the stored secret normally.
+	 *
+	 * @param array               $settings Settings about to be saved.
+	 * @param \WC_Payment_Gateway $gateway  Payment gateway instance.
+	 * @return array
+	 */
+	public function preserve_empty_rest_api_secret( $settings, $gateway ) {
+		if ( ! $gateway instanceof Gateway || ! is_array( $settings ) ) {
+			return $settings;
+		}
+
+		$submitted_secret = isset( $settings['api_secret'] ) ? trim( (string) $settings['api_secret'] ) : '';
+		if ( '' !== $submitted_secret ) {
+			return $settings;
+		}
+
+		$stored = self::settings();
+		if ( ! empty( $stored['api_secret'] ) ) {
+			$settings['api_secret'] = (string) $stored['api_secret'];
+		}
+
+		return $settings;
 	}
 
 	public function register_blocks_integration() {
