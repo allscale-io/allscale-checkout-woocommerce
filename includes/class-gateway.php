@@ -548,9 +548,17 @@ class Gateway extends \WC_Payment_Gateway {
 	 * @param \WC_Order $order Order.
 	 */
 	private static function render_thankyou_block( \WC_Order $order ) {
-		$status = (int) $order->get_meta( Status_Mapper::META_STATUS );
+		$status           = (int) $order->get_meta( Status_Mapper::META_STATUS );
+		$has_late_payment = ! empty( (array) $order->get_meta( Status_Mapper::META_LATE_PAYMENT, false ) );
 
-		if ( $order->is_paid() || $status === Status_Codes::CONFIRMED ) {
+		if ( $has_late_payment ) {
+			$tone   = 'pending';
+			$bg     = '#fef7e0';
+			$border = '#f9ab00';
+			$title  = __( 'Payment received after order cancellation', 'allscale-checkout' );
+			$body   = __( 'Your payment arrived after this order was cancelled. The store has been notified and must review the order before fulfilment or refund.', 'allscale-checkout' );
+			$sub    = '';
+		} elseif ( $order->is_paid() || $status === Status_Codes::CONFIRMED ) {
 			$tone     = 'confirmed';
 			$bg       = '#e6f4ea';
 			$border   = '#34a853';

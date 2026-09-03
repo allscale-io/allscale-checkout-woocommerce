@@ -24,6 +24,7 @@ final class Status_Mapper {
 	const META_INTENT_AMOUNT_CENTS  = '_allscale_intent_amount_cents';
 	const META_SETTLED_INTENT_ID    = '_allscale_settled_intent_id';
 	const META_DUPLICATE_PAYMENT    = '_allscale_duplicate_payment_intent_id';
+	const META_LATE_PAYMENT         = '_allscale_late_payment_intent_id';
 	const META_PROCESSED_WEBHOOK_ID = '_allscale_processed_webhook_id';
 	// Non-unique meta: one row per superseded intent. When the customer
 	// re-enters process_payment (double-click, pay-for-order retry) a fresh
@@ -56,6 +57,14 @@ final class Status_Mapper {
 	public static function apply( \WC_Order $order, $status, array $context, Logger $logger ) {
 		$status = (int) $status;
 		$incoming_intent_id = isset( $context['intent_id'] ) ? (string) $context['intent_id'] : '';
+		$current_status = $order->get_status();
+
+		// Never auto-fulfil an order whose stock has already been restored, but
+		// do not lose a real payment that confirms after WooCommerce cancelled it.
+		if ( $status === Status_Codes::CONFIRMED && $current_status === 'cancelled' ) {
+			self::record_late_payment( $order, $incoming_intent_id, $context, $logger );
+			return;
+		}
 
 		// A second confirmed intent means funds arrived twice. Never run payment
 		// completion again, but persist an explicit reconciliation signal instead
@@ -70,7 +79,6 @@ final class Status_Mapper {
 		// "Hold stock" timeout and Allscale later confirms a payment, we don't
 		// want to re-process — stock was already restored, and the merchant
 		// must intervene manually.
-		$current_status = $order->get_status();
 		if ( in_array( $current_status, array( 'completed', 'refunded', 'cancelled' ), true ) ) {
 			$logger->info(
 				'Skipping Allscale status update on terminal order',
@@ -343,6 +351,55 @@ final class Status_Mapper {
 			)
 		);
 		do_action( 'allscale_checkout_duplicate_payment_detected', $order, $context );
+	}
+
+	/**
+	 * Persist and flag a payment that confirms after order cancellation.
+	 *
+	 * Stock may already have been restored, so this deliberately leaves the
+	 * WooCommerce status unchanged and requires merchant reconciliation.
+	 *
+	 * @param \WC_Order $order              Cancelled order.
+	 * @param string    $incoming_intent_id Incoming intent id.
+	 * @param array     $context            Payment context.
+	 * @param Logger    $logger             Logger.
+	 */
+	private static function record_late_payment( \WC_Order $order, $incoming_intent_id, array $context, Logger $logger ) {
+		$recorded = array();
+		foreach ( (array) $order->get_meta( self::META_LATE_PAYMENT, false ) as $meta ) {
+			$recorded[] = is_object( $meta ) && isset( $meta->value ) ? (string) $meta->value : (string) $meta;
+		}
+		if ( $incoming_intent_id !== '' && in_array( $incoming_intent_id, $recorded, true ) ) {
+			return;
+		}
+
+		self::persist_meta( $order, Status_Codes::CONFIRMED, $context );
+		if ( $incoming_intent_id !== '' ) {
+			$order->add_meta_data( self::META_LATE_PAYMENT, $incoming_intent_id, false );
+		}
+
+		$paid_cents = isset( $context['paid_cents'] ) ? (int) $context['paid_cents'] : 0;
+		$tx_hash    = isset( $context['tx_hash'] ) ? (string) $context['tx_hash'] : '';
+		$order->add_order_note(
+			sprintf(
+				/* translators: 1: received cents, 2: Allscale intent id, 3: transaction hash */
+				__( 'Allscale: payment confirmed after this order was cancelled. Received %1$d cents; intent: %2$s; transaction: %3$s. The order was not fulfilled automatically—review stock and refund or fulfil manually.', 'allscale-checkout' ),
+				$paid_cents,
+				$incoming_intent_id !== '' ? $incoming_intent_id : __( 'unknown', 'allscale-checkout' ),
+				$tx_hash !== '' ? $tx_hash : __( 'unknown', 'allscale-checkout' )
+			)
+		);
+		$order->save();
+
+		$logger->warning(
+			'Payment confirmed after WooCommerce order cancellation',
+			array(
+				'order_id'  => $order->get_id(),
+				'intent_id' => $incoming_intent_id,
+				'tx_hash'   => $tx_hash,
+			)
+		);
+		do_action( 'allscale_checkout_late_payment_detected', $order, $context );
 	}
 
 	/**

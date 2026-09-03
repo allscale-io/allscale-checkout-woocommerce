@@ -22,12 +22,16 @@ namespace {
 		private $id;
 		private $meta;
 		private $paid;
+		private $status;
+		private $total;
 		private $notes = array();
 
-		public function __construct( $id, array $meta = array(), $paid = false ) {
+		public function __construct( $id, array $meta = array(), $paid = false, $status = '', $total = 25 ) {
 			$this->id   = $id;
 			$this->meta = $meta;
 			$this->paid = (bool) $paid;
+			$this->status = $status !== '' ? $status : ( $this->paid ? 'processing' : 'pending' );
+			$this->total  = $total;
 		}
 
 		public function get_id() {
@@ -68,7 +72,11 @@ namespace {
 		}
 
 		public function get_status() {
-			return $this->paid ? 'processing' : 'pending';
+			return $this->status;
+		}
+
+		public function get_total() {
+			return $this->total;
 		}
 
 		public function save() {
@@ -306,6 +314,23 @@ namespace Allscale\Checkout\Tests {
 		$logger
 	);
 	expect_same( 1, count( $paid_order->get_notes() ), 'The same duplicate settlement must not add another order note.' );
+
+	$cancelled_order = new \WC_Order( 303, array(), false, 'cancelled', 25 );
+	$late_context = array(
+		'intent_id' => 'intent-late',
+		'tx_hash'   => 'tx-late',
+		'paid_cents' => 2500,
+	);
+	Status_Mapper::apply( $cancelled_order, Status_Codes::CONFIRMED, $late_context, $logger );
+	expect_same(
+		array( 'intent-late' ),
+		$cancelled_order->get_meta( Status_Mapper::META_LATE_PAYMENT, false ),
+		'A payment on a cancelled order must be persisted for reconciliation.'
+	);
+	expect_same( 'cancelled', $cancelled_order->get_status(), 'Late payment handling must not restore or fulfil a cancelled order.' );
+	expect_same( 1, count( $cancelled_order->get_notes() ), 'A late payment must add one merchant-facing order note.' );
+	Status_Mapper::apply( $cancelled_order, Status_Codes::CONFIRMED, $late_context, $logger );
+	expect_same( 1, count( $cancelled_order->get_notes() ), 'The same late payment must not add another order note.' );
 
 	echo "Concurrency hardening tests passed.\n";
 }

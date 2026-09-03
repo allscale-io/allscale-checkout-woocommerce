@@ -201,6 +201,8 @@ Before every transition, the mapper short-circuits if the order is already in th
 
 The same 120-second order lock guards intent creation, webhook handling, and the return-URL fallback. Combined with durable processed-webhook IDs and the mapper's status short-circuit, it prevents duplicate intents, duplicate notes, and concurrent payment completion.
 
+Confirmed payments that arrive after WooCommerce has cancelled an order are persisted to payment meta and flagged in an order note, but the order remains cancelled because stock may already have been restored. Duplicate settlements on an already-paid order are likewise recorded for manual reconciliation without running `payment_complete()` again.
+
 ### 4.9 Webhook handler (`includes/class-webhook-handler.php`)
 
 Registered unconditionally from `Plugin::boot()` on the `init` hook. Listens on `woocommerce_api_allscale_checkout`.

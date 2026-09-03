@@ -670,6 +670,8 @@ final class Admin {
 		}
 
 		$status = (int) $order->get_meta( Status_Mapper::META_STATUS );
+		$has_duplicate_payment = ! empty( (array) $order->get_meta( Status_Mapper::META_DUPLICATE_PAYMENT, false ) );
+		$has_late_payment = ! empty( (array) $order->get_meta( Status_Mapper::META_LATE_PAYMENT, false ) );
 		$tx_hash = (string) $order->get_meta( Status_Mapper::META_TX_HASH );
 		$chain_id = (int) $order->get_meta( Status_Mapper::META_CHAIN_ID );
 		$pmt = (int) $order->get_meta( Status_Mapper::META_PAYMENT_METHOD_TYPE );
@@ -680,7 +682,14 @@ final class Admin {
 		$net = (string) $order->get_meta( Status_Mapper::META_NET_INCOME_AMOUNT );
 
 		$dot = 'gray';
-		if ( $status === Status_Codes::CONFIRMED ) {
+		$status_label = Status_Codes::label( $status ?: Status_Codes::CREATED );
+		if ( $has_duplicate_payment ) {
+			$dot = 'red';
+			$status_label = __( 'Possible duplicate payment', 'allscale-checkout' );
+		} elseif ( $has_late_payment ) {
+			$dot = 'yellow';
+			$status_label = __( 'Paid after cancellation — review required', 'allscale-checkout' );
+		} elseif ( $status === Status_Codes::CONFIRMED ) {
 			$dot = 'green';
 		} elseif ( Status_Codes::is_failure( $status ) ) {
 			$dot = 'red';
@@ -691,7 +700,7 @@ final class Admin {
 		echo '<div class="allscale-metabox">';
 		echo '<div class="meta-row"><span class="meta-label">' . esc_html__( 'Status', 'allscale-checkout' ) . '</span>';
 		echo '<span class="meta-val"><span class="as-pill"><span class="as-pill-dot dot-' . esc_attr( $dot ) . '"></span>'
-			. '<span class="as-pill-text">' . esc_html( Status_Codes::label( $status ?: Status_Codes::CREATED ) ) . '</span></span></span></div>';
+			. '<span class="as-pill-text">' . esc_html( $status_label ) . '</span></span></span></div>';
 
 		// Prefer actual_paid_amount when available (only present after on-chain confirmation).
 		$paid_display = '' !== $paid ? $paid : $amount_coins;
