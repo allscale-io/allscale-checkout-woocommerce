@@ -226,6 +226,23 @@ class Gateway extends \WC_Payment_Gateway {
 			return array( 'result' => 'failure' );
 		}
 
+		// A retry (double-click, pay-for-order) reaches here with an intent
+		// already on the order. That intent is still live on Allscale and the
+		// customer may still pay it, so archive it rather than overwrite it —
+		// Webhook_Handler::find_order_by_intent and handle_thankyou both look
+		// through the archived ids.
+		$previous_intent = (string) $order->get_meta( Status_Mapper::META_INTENT_ID );
+		if ( $previous_intent !== '' && $previous_intent !== $intent_id ) {
+			$order->add_meta_data( Status_Mapper::META_PRIOR_INTENT_ID, $previous_intent, false );
+			$logger->info(
+				'Superseding an existing checkout intent',
+				array(
+					'order_id'   => $order->get_id(),
+					'previous'   => $previous_intent,
+					'new'        => $intent_id,
+				)
+			);
+		}
 		$order->update_meta_data( Status_Mapper::META_INTENT_ID, $intent_id );
 		$order->save();
 
@@ -258,16 +275,13 @@ class Gateway extends \WC_Payment_Gateway {
 		// Only run the API fallback if the order isn't already done. Already-paid
 		// orders (webhook landed in time) still get the status block rendered below.
 		if ( ! $order->is_paid() ) {
-			$intent_id = (string) $order->get_meta( Status_Mapper::META_INTENT_ID );
-			if ( $intent_id === '' ) {
-				// Legacy 0.1.x meta key fallback.
-				$intent_id = (string) $order->get_meta( '_allscale_checkout_intent_id' );
-			}
+			$logger = new Logger( 'yes' === $this->get_option( 'debug_logging' ) );
+			$api    = new Api_Client( (string) $this->get_option( 'api_key' ), (string) $this->get_option( 'api_secret' ), $logger );
 
-			if ( $intent_id !== '' ) {
-				$logger = new Logger( 'yes' === $this->get_option( 'debug_logging' ) );
-				$api    = new Api_Client( (string) $this->get_option( 'api_key' ), (string) $this->get_option( 'api_secret' ), $logger );
-
+			// Current intent first, then any superseded ones (see process_payment).
+			// A customer who paid an earlier intent from a still-open tab gets
+			// recognised here even if the webhook hasn't landed.
+			foreach ( self::intent_ids_for( $order ) as $intent_id ) {
 				$result = $api->get_intent_details( $intent_id );
 				if ( $result->success && is_array( $result->data ) ) {
 					$data   = $result->data;
@@ -298,6 +312,12 @@ class Gateway extends \WC_Payment_Gateway {
 						);
 					}
 				}
+
+				// Stop at the first intent that settled the order.
+				$refreshed = wc_get_order( $order->get_id() );
+				if ( $refreshed && $refreshed->is_paid() ) {
+					break;
+				}
 			}
 		}
 
@@ -308,6 +328,24 @@ class Gateway extends \WC_Payment_Gateway {
 		if ( $fresh ) {
 			self::render_thankyou_block( $fresh );
 		}
+	}
+
+	/**
+	 * Every Allscale intent id ever attached to the order — current first,
+	 * then superseded ones, then the legacy 0.1.x key.
+	 *
+	 * @param \WC_Order $order Order.
+	 * @return string[] De-duplicated, empty strings removed.
+	 */
+	public static function intent_ids_for( \WC_Order $order ) {
+		$ids   = array();
+		$ids[] = (string) $order->get_meta( Status_Mapper::META_INTENT_ID );
+		foreach ( (array) $order->get_meta( Status_Mapper::META_PRIOR_INTENT_ID, false ) as $meta ) {
+			$ids[] = is_object( $meta ) && isset( $meta->value ) ? (string) $meta->value : (string) $meta;
+		}
+		$ids[] = (string) $order->get_meta( '_allscale_checkout_intent_id' );
+
+		return array_values( array_unique( array_filter( $ids, 'strlen' ) ) );
 	}
 
 	/**

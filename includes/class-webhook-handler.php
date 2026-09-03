@@ -191,8 +191,9 @@ final class Webhook_Handler {
 	/**
 	 * Look up the WooCommerce order that owns this intent id.
 	 *
-	 * Reads both the current meta key and the legacy 0.1.x key for in-flight
-	 * orders that were created before the upgrade.
+	 * Reads the current meta key, any superseded intents the order accumulated
+	 * through payment retries (Status_Mapper::META_PRIOR_INTENT_ID), and the
+	 * legacy 0.1.x key for in-flight orders created before the upgrade.
 	 *
 	 * @param string $intent_id Allscale intent id.
 	 * @return \WC_Order|null
@@ -205,6 +206,10 @@ final class Webhook_Handler {
 					'relation' => 'OR',
 					array(
 						'key'   => Status_Mapper::META_INTENT_ID,
+						'value' => $intent_id,
+					),
+					array(
+						'key'   => Status_Mapper::META_PRIOR_INTENT_ID,
 						'value' => $intent_id,
 					),
 					array(

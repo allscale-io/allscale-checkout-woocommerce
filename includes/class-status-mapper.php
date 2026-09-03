@@ -20,6 +20,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Status_Mapper {
 
 	const META_INTENT_ID            = '_allscale_intent_id';
+	// Non-unique meta: one row per superseded intent. When the customer
+	// re-enters process_payment (double-click, pay-for-order retry) a fresh
+	// intent replaces META_INTENT_ID, but the old one is still live on the
+	// Allscale side and can still be paid. Keeping every prior id lets the
+	// webhook and the thank-you fallback recognise that payment instead of
+	// dropping it as "no order matches".
+	const META_PRIOR_INTENT_ID      = '_allscale_prior_intent_id';
 	const META_TX_HASH              = '_allscale_tx_hash';
 	const META_STATUS               = '_allscale_status';
 	const META_PAYMENT_METHOD_TYPE  = '_allscale_payment_method_type';
@@ -221,6 +228,12 @@ final class Status_Mapper {
 		// confirmed-status signal alone — Allscale already validated the amount
 		// against what we sent.
 		if ( $paid_cents > 0 && $paid_cents < $expected_cents ) {
+			// persist_meta() already stamped META_STATUS = CONFIRMED before we
+			// got here, and the thank-you block / order meta box render from
+			// that meta. Left as-is, an underpaying customer sees "Payment
+			// confirmed" while the order sits on-hold. Record the outcome we
+			// actually applied.
+			$order->update_meta_data( self::META_STATUS, Status_Codes::UNDERPAID );
 			$order->update_status(
 				'on-hold',
 				sprintf(
